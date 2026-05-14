@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student History</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial;
+            background: #0f2f5f;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: #2c3e50;
+        }
+
+        a {
+            color: #2471a3;
+            text-decoration: none;
+        }
+
+        body > p a,
+        body > h1 {
+            color: #ffffff;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .profile-item {
+            background: #ecf0f1;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .label {
+            color: #555;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .value {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        .empty {
+            color: #777;
+            padding: 12px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<p><a href="/">Back to dashboard</a></p>
+
+<h1>Student History</h1>
+
+<div class="card">
+    <div class="profile-grid">
+        <div class="profile-item">
+            <div class="label">LRN</div>
+            <div class="value">{{ student[0] }}</div>
+        </div>
+
+        <div class="profile-item">
+            <div class="label">Latest Name</div>
+            <div class="value">{{ student[1] }}</div>
+        </div>
+
+        <div class="profile-item">
+            <div class="label">Latest Gender</div>
+            <div class="value">{{ student[2] or 'UNKNOWN' }}</div>
+        </div>
+
+        <div class="profile-item">
+            <div class="label">Last Updated</div>
+            <div class="value">{{ student[3] }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Progression Records</h2>
+
+    {% if history %}
+    <table>
+        <tr>
+            <th>School Year</th>
+            <th>Grade</th>
+            <th>Gender</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th>Updated At</th>
+        </tr>
+
+        {% for record in history %}
+        <tr>
+            <td>{{ record[0] }}</td>
+            <td>Grade {{ record[1] }}</td>
+            <td>{{ record[2] }}</td>
+            <td>{{ record[3] }}</td>
+            <td>{{ record[4] or '' }}</td>
+            <td>{{ record[5] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty">No progression records found.</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Change Log</h2>
+
+    {% if changes %}
+    <table>
+        <tr>
+            <th>Field</th>
+            <th>Old Value</th>
+            <th>New Value</th>
+            <th>School Year</th>
+            <th>Grade</th>
+            <th>Changed At</th>
+        </tr>
+
+        {% for change in changes %}
+        <tr>
+            <td>{{ change[0] }}</td>
+            <td>{{ change[1] }}</td>
+            <td>{{ change[2] }}</td>
+            <td>{{ change[3] or '' }}</td>
+            <td>{% if change[4] %}Grade {{ change[4] }}{% endif %}</td>
+            <td>{{ change[5] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty">No changes logged for this LRN.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

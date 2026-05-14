@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports | LRN Tracking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/templates/css/dashboard.css">
+  <link rel="stylesheet" href="/templates/css/reports.css">
+</head>
+<body>
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="logo-section">
+      <img src="/rsc/schoolLogo.png" alt="Logo">
+      <div class="logo-text"><h5>LRN System</h5><span>Student Tracking</span></div>
+    </div>
+    <div class="nav-group"><p>MAIN</p><a href="/dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
+    <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/reports" class="active"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
+    <div class="nav-group"><p>SYSTEM</p><a href="/login"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="topbar">
+      <div><h3>Reports</h3><span>Generate a simple progression summary for review and printing.</span></div>
+      <div class="topbar-right"><div class="profile-box">Admin</div></div>
+    </div>
+
+    <section class="panel mb-4">
+      <form class="reports-header" method="get" action="/reports">
+        <div>
+          <h5>Report Setup</h5>
+          <span>Filter by school year, then export a formatted Excel summary.</span>
+        </div>
+        <div class="report-actions">
+          <input class="form-control" type="text" name="school_year" value="{{ selected_year }}" placeholder="All years or 2025-2026" pattern="[0-9]{4}-[0-9]{4}">
+          <button class="btn custom-btn" type="submit">Generate</button>
+          <a class="btn btn-outline-primary" href="/reports/export{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Export Excel</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel mb-4">
+      <div class="report-preview-header">
+        <div><h5>Computed Rates</h5><span class="text-muted">Current values are based on uploaded student records.</span></div>
+      </div>
+      <div class="formula-list">
+        <div><strong>Cohort Survival Rate</strong><span>{{ stats.cohort_survival_rate }}%</span></div>
+        <div><strong>Completion Rate</strong><span>{{ stats.completion_rate }}%</span></div>
+        <div><strong>Retention Rate</strong><span>{{ stats.retention_rate }}%</span></div>
+        <div><strong>Repetition Rate</strong><span>{{ stats.repetition_rate }}%</span></div>
+      </div>
+    </section>
+
+    <section class="panel mt-4">
+      <div class="report-preview-header">
+        <div><h5>Report Preview</h5><span class="text-muted">Live system summary for administrative review.</span></div>
+        <span class="badge bg-primary">Preview Mode</span>
+      </div>
+
+      <div class="report-document">
+        <div class="report-title">
+          <h4>Alubijid National Comprehensive High School</h4>
+          <p>Integrated LRN-Based Student Progression Tracking System</p>
+          <h5>Progression Summary</h5>
+          <span>Based on uploaded LIS records</span>
+        </div>
+
+        <div class="summary-boxes">
+          <div><span>Total Students</span><strong>{{ stats.total_students }}</strong></div>
+          <div><span>Grade 10 Records</span><strong>{{ stats.completed }}</strong></div>
+          <div><span>Transfer-In</span><strong>{{ stats.transfer_in }}</strong></div>
+          <div><span>Transfer-Out</span><strong>{{ stats.transfer_out }}</strong></div>
+        </div>
+
+        <div class="table-responsive mt-4">
+          <table class="table custom-table align-middle">
+            <thead><tr><th>Grade Level</th><th>Tracked Students</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for item in grade_distribution %}
+              <tr>
+                <td>Grade {{ item.grade }}</td>
+                <td>{{ item.count }}</td>
+                <td><span class="badge {{ 'bg-success' if item.count else 'bg-secondary' }}">{{ item.label }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
