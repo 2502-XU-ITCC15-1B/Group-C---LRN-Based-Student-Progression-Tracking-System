@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Logout | LRN Tracking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/templates/css/dashboard.css">
+  <style>
+    body {
+      min-height: 100vh;
+      background: #12376f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Century Gothic", CenturyGothic, Arial, sans-serif;
+    }
+
+    .confirm-card {
+      width: min(92vw, 420px);
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+      padding: 28px;
+      text-align: center;
+    }
+
+    .confirm-card h3 {
+      color: #12376f;
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .confirm-card p {
+      color: #5d6f91;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="confirm-card">
+    <h3>Log out?</h3>
+    <p class="mb-4">You are currently signed in as {{ current_user or 'Admin' }}.</p>
+    <div class="d-flex gap-2 justify-content-center">
+      <form method="POST" action="/logout">
+        <button class="btn btn-danger" type="submit">Yes, Log Out</button>
+      </form>
+      <a class="btn btn-outline-primary" href="/dashboard">Cancel</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -204,11 +204,70 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["GET", "POST"])
+@login_required
 def logout():
+    if request.method == "GET":
+        return render_template("logout_confirm.html")
+
     session.clear()
     flash("Logged out successfully.")
     return redirect(url_for("login"))
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    ensure_schema()
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if len(new_password) < 8:
+            flash("New password must be at least 8 characters.")
+            return render_template("change_password.html")
+
+        if new_password != confirm_password:
+            flash("New password and confirmation do not match.")
+            return render_template("change_password.html")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, password_hash
+            FROM users
+            WHERE id = %s
+            """,
+            (session["user_id"],),
+        )
+        user = cursor.fetchone()
+
+        if not user or not check_password_hash(user["password_hash"], current_password):
+            cursor.close()
+            conn.close()
+            flash("Current password is incorrect.")
+            return render_template("change_password.html")
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET password_hash = %s
+            WHERE id = %s
+            """,
+            (generate_password_hash(new_password), session["user_id"]),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        flash("Password changed successfully. Please log in again.")
+        session.clear()
+        return redirect(url_for("login"))
+
+    return render_template("change_password.html")
 
 
 @app.route("/dashboard")
