@@ -102,9 +102,17 @@
     <h3 class="login-title mb-1">SIGN IN</h3>
     <p class="login-subtitle mb-3">Enter your account details to continue</p>
 
-    <form action="/dashboard" method="GET">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning py-2 mb-3 text-start" role="alert">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form action="/login{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" method="POST">
       <div class="mb-2 text-start">
-        <input type="text" name="username" class="form-control" placeholder="Enter ID" required>
+        <input type="text" name="username" class="form-control" placeholder="Enter ID" value="{{ username or '' }}" required>
       </div>
 
       <div class="mb-2 text-start">
@@ -114,9 +122,7 @@
       <button type="submit" class="btn btn-login w-100 mt-1">LOG IN</button>
     </form>
 
-    <div class="mt-2">
-      <a href="#" class="forgot-link">Forgot your password?</a>
-    </div>
+    <p class="system-name mb-0">Authorized personnel only</p>
 
     <p class="system-name">
       Integrated LRN-Based Student Progression Tracking System

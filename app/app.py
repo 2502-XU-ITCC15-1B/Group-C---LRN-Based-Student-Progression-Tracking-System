@@ -1,19 +1,55 @@
-from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, session, url_for
+from functools import wraps
 from io import BytesIO
 import mysql.connector
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+import os
 import pandas as pd
 import re
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-secret-key")
 
 SUPPORTED_GRADES = [7, 8, 9, 10]
 SCHOOL_YEAR_PATTERN = re.compile(r"^\d{4}-\d{4}$")
 LRN_PATTERN = re.compile(r"^\d{12}$")
 SCHEMA_READY = False
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in to access the system.")
+            return redirect(url_for("login", next=request.path))
+
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in to access the system.")
+            return redirect(url_for("login", next=request.path))
+
+        if session.get("role") != "admin":
+            flash("You do not have permission to perform that action.")
+            return redirect(url_for("dashboard"))
+
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+@app.context_processor
+def inject_current_user():
+    return {"current_user": session.get("username"), "current_role": session.get("role")}
 
 
 @app.route("/")
@@ -22,6 +58,7 @@ def root():
 
 
 @app.route("/legacy-dashboard")
+@login_required
 def home():
     ensure_schema()
 
@@ -127,13 +164,55 @@ def home():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
+    ensure_schema()
+
+    if "user_id" in session and request.method == "GET":
         return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, username, password_hash, role, is_active
+            FROM users
+            WHERE username = %s
+            """,
+            (username,),
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not user or not user["is_active"] or not check_password_hash(user["password_hash"], password):
+            flash("Invalid username or password.")
+            return render_template("login.html", username=username)
+
+        session.clear()
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        session["role"] = user["role"]
+        flash("Logged in successfully.")
+        next_page = request.args.get("next")
+        if not next_page or not next_page.startswith("/") or next_page.startswith("//"):
+            next_page = url_for("dashboard")
+        return redirect(next_page)
 
     return render_template("login.html")
 
 
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Logged out successfully.")
+    return redirect(url_for("login"))
+
+
 @app.route("/dashboard")
+@login_required
 def dashboard():
     ensure_schema()
 
@@ -154,11 +233,13 @@ def dashboard():
 
 
 @app.route("/lis-upload")
+@login_required
 def lis_upload():
     return render_template("lis_upload.html", grades=SUPPORTED_GRADES)
 
 
 @app.route("/records/delete-batch", methods=["POST"])
+@admin_required
 def delete_batch_records():
     ensure_schema()
 
@@ -244,6 +325,7 @@ def delete_batch_records():
 
 
 @app.route("/records/delete-all", methods=["POST"])
+@admin_required
 def delete_all_records():
     ensure_schema()
 
@@ -284,6 +366,7 @@ def delete_all_records():
 
 
 @app.route("/students")
+@login_required
 def students():
     ensure_schema()
 
@@ -312,11 +395,13 @@ def students():
 
 
 @app.route("/cohort-tracking")
+@login_required
 def cohort_tracking_frontend():
     return cohort_tracking()
 
 
 @app.route("/reports")
+@login_required
 def reports():
     ensure_schema()
 
@@ -370,6 +455,7 @@ def reports():
 
 
 @app.route("/reports/export")
+@login_required
 def export_report():
     ensure_schema()
 
@@ -412,6 +498,7 @@ def export_report():
 
 
 @app.route("/reports/print")
+@login_required
 def print_report():
     ensure_schema()
 
@@ -443,11 +530,13 @@ def print_report():
 
 
 @app.route("/computations")
+@login_required
 def computations():
     return redirect(url_for("reports"))
 
 
 @app.route("/users")
+@admin_required
 def users():
     return redirect(url_for("dashboard"))
 
@@ -463,6 +552,7 @@ def resources(filename):
 
 
 @app.route("/student/search")
+@login_required
 def search_student():
     lrn = request.args.get("lrn", "").strip()
 
@@ -474,6 +564,7 @@ def search_student():
 
 
 @app.route("/student/<lrn>")
+@login_required
 def student_history(lrn):
     ensure_schema()
 
@@ -558,6 +649,7 @@ def student_history(lrn):
 
 
 @app.route("/cohort")
+@login_required
 def cohort_tracking():
     ensure_schema()
 
@@ -1495,6 +1587,19 @@ def ensure_schema():
         """
     )
 
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(80) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL DEFAULT 'admin',
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
     for statement in schema_updates:
         try:
             cursor.execute(statement)
@@ -1533,6 +1638,17 @@ def ensure_schema():
         END
         """
     )
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    user_count = cursor.fetchone()[0] or 0
+    if user_count == 0:
+        cursor.execute(
+            """
+            INSERT INTO users (username, password_hash, role)
+            VALUES (%s, %s, %s)
+            """,
+            ("admin", generate_password_hash("admin123"), "admin"),
+        )
 
     conn.commit()
     cursor.close()
@@ -1733,6 +1849,7 @@ def find_sf1_columns(df):
 
 
 @app.route("/upload", methods=["POST"])
+@admin_required
 def upload():
     try:
         ensure_schema()
