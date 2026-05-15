@@ -115,14 +115,22 @@
               <td>{{ row.name }}</td>
               {% for cell in row.path %}
               <td>
-                <span class="badge {{ 'bg-success' if cell.status in ['ENROLLED', 'COMPLETED'] else 'bg-warning text-dark' if cell.status in ['REPEATED', 'MISSING'] else 'bg-info' if cell.status in ['TRANSFER_IN', 'PENDING_TRANSFER_IN'] else 'bg-danger' }}">{{ cell.status|replace('_', ' ')|title }}</span>
+                <span class="badge {{ 'bg-success' if cell.status in ['ENROLLED', 'COMPLETED'] else 'bg-warning text-dark' if cell.status in ['REPEATED', 'MISSING'] else 'bg-info' if cell.status in ['TRANSFER_IN', 'PENDING_TRANSFER_IN'] else 'bg-danger' }}">{{ cell.status_label }}</span>
                 {% if cell.remarks %}<div class="text-muted small">{{ cell.remarks }}</div>{% endif %}
               </td>
               {% endfor %}
-              <td><span class="badge bg-primary">{{ row.result|replace('_', ' ')|title }}</span></td>
+              <td><span class="badge bg-primary">{{ row.result_label }}</span></td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted">Input a starting school year to generate cohort tracking.</td></tr>
+            <tr>
+              <td colspan="7" class="text-center text-muted">
+                {% if start_year %}
+                No cohort records found for Grade {{ start_grade }} in {{ start_year }}.
+                {% else %}
+                Input a starting school year to generate cohort tracking.
+                {% endif %}
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>

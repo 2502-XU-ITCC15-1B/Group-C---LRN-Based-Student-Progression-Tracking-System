@@ -153,12 +153,12 @@
           <tbody>
             {% for record in history %}
             <tr>
-              <td>{{ record[0] }}</td>
-              <td>Grade {{ record[1] }}</td>
-              <td>{{ record[2] }}</td>
-              <td><span class="badge bg-primary">{{ record[3]|replace('_', ' ')|title }}</span></td>
-              <td>{{ record[4] or '-' }}</td>
-              <td>{{ record[5] }}</td>
+              <td>{{ record.school_year }}</td>
+              <td>Grade {{ record.grade_level }}</td>
+              <td>{{ record.gender }}</td>
+              <td><span class="badge bg-primary">{{ record.status_label }}</span></td>
+              <td>{{ record.remarks or '-' }}</td>
+              <td>{{ record.updated_at }}</td>
             </tr>
             {% endfor %}
           </tbody>

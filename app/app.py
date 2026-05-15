@@ -321,11 +321,35 @@ def reports():
     ensure_schema()
 
     selected_year = request.args.get("school_year", "").strip()
+    base_year = request.args.get("base_year", "").strip()
+    compare_year = request.args.get("compare_year", "").strip()
+    grade_from = request.args.get("grade_from", "7").strip()
+    grade_to = request.args.get("grade_to", "8").strip()
+    calculator = None
     conn = get_db_connection()
     cursor = conn.cursor()
     stats = get_dashboard_stats(cursor)
     grade_distribution = get_grade_distribution(cursor)
     school_years = get_school_years(cursor)
+    at_risk_students = get_at_risk_students(cursor)
+    csr_breakdown = get_csr_breakdown(cursor)
+
+    if (
+        SCHOOL_YEAR_PATTERN.match(base_year)
+        and SCHOOL_YEAR_PATTERN.match(compare_year)
+        and grade_from.isdigit()
+        and grade_to.isdigit()
+        and int(grade_from) in SUPPORTED_GRADES
+        and int(grade_to) in SUPPORTED_GRADES
+    ):
+        calculator = build_year_grade_calculator(
+            cursor,
+            base_year,
+            compare_year,
+            int(grade_from),
+            int(grade_to),
+        )
+
     cursor.close()
     conn.close()
 
@@ -335,6 +359,13 @@ def reports():
         grade_distribution=grade_distribution,
         school_years=school_years,
         selected_year=selected_year,
+        at_risk_students=at_risk_students,
+        csr_breakdown=csr_breakdown,
+        calculator=calculator,
+        base_year=base_year,
+        compare_year=compare_year,
+        grade_from=int(grade_from) if grade_from.isdigit() else 7,
+        grade_to=int(grade_to) if grade_to.isdigit() else 8,
     )
 
 
@@ -352,10 +383,19 @@ def export_report():
     stats = get_dashboard_stats(cursor)
     grade_distribution = get_grade_distribution(cursor)
     records = get_report_records(cursor, school_year)
+    at_risk_students = get_at_risk_students(cursor)
+    csr_breakdown = get_csr_breakdown(cursor)
     cursor.close()
     conn.close()
 
-    workbook = build_progression_report_workbook(stats, grade_distribution, records, school_year)
+    workbook = build_progression_report_workbook(
+        stats,
+        grade_distribution,
+        records,
+        school_year,
+        at_risk_students,
+        csr_breakdown,
+    )
     output = BytesIO()
     workbook.save(output)
     output.seek(0)
@@ -451,7 +491,18 @@ def student_history(lrn):
         """,
         (lrn,),
     )
-    history = cursor.fetchall()
+    history = [
+        {
+            "school_year": school_year,
+            "grade_level": grade_level,
+            "gender": gender,
+            "status": status,
+            "status_label": humanize_status(status),
+            "remarks": format_remarks(status, remarks),
+            "updated_at": updated_at,
+        }
+        for school_year, grade_level, gender, status, remarks, updated_at in cursor.fetchall()
+    ]
 
     cursor.execute(
         """
@@ -768,6 +819,234 @@ def format_remarks(status, remarks):
     return clean_remarks
 
 
+def build_student_timelines(cursor):
+    cursor.execute(
+        """
+        SELECT s.lrn, s.name, r.school_year, r.grade_level, r.status, r.remarks
+        FROM students s
+        JOIN student_records r ON s.lrn = r.lrn
+        WHERE r.grade_level IN (7, 8, 9, 10)
+        ORDER BY s.lrn, r.school_year, r.grade_level
+        """
+    )
+
+    timelines = {}
+    for lrn, name, school_year, grade_level, status, remarks in cursor.fetchall():
+        timelines.setdefault(lrn, {"lrn": lrn, "name": name, "records": []})
+        timelines[lrn]["records"].append(
+            {
+                "school_year": school_year,
+                "grade_level": grade_level,
+                "status": status,
+                "status_label": humanize_status(status),
+                "remarks": format_remarks(status, remarks),
+            }
+        )
+
+    return timelines
+
+
+def build_year_grade_calculator(cursor, base_year, compare_year, grade_from, grade_to):
+    expected_grade_to = grade_from + 1
+
+    if grade_from >= 10:
+        return {
+            "base_year": base_year,
+            "compare_year": compare_year,
+            "grade_from": grade_from,
+            "grade_to": grade_to,
+            "has_data": False,
+            "message": "Promotion calculator only supports Grade 7 to Grade 10 progression paths.",
+            "retention": {"retained": 0, "dropped": 0, "rate": 0},
+            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
+        }
+
+    if grade_to != expected_grade_to:
+        return {
+            "base_year": base_year,
+            "compare_year": compare_year,
+            "grade_from": grade_from,
+            "grade_to": grade_to,
+            "has_data": False,
+            "message": f"Invalid progression path. Grade {grade_from} should be compared to Grade {expected_grade_to}.",
+            "retention": {"retained": 0, "dropped": 0, "rate": 0},
+            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
+        }
+
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT lrn)
+        FROM student_records
+        WHERE school_year = %s
+        AND grade_level = %s
+        """,
+        (base_year, grade_from),
+    )
+    base_total = cursor.fetchone()[0] or 0
+
+    if base_total == 0:
+        return {
+            "base_year": base_year,
+            "compare_year": compare_year,
+            "grade_from": grade_from,
+            "grade_to": grade_to,
+            "has_data": False,
+            "message": f"No Grade {grade_from} records found for {base_year}.",
+            "retention": {"retained": 0, "dropped": 0, "rate": 0},
+            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
+        }
+
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT lrn)
+        FROM student_records
+        WHERE school_year = %s
+        AND grade_level = %s
+        """,
+        (compare_year, grade_to),
+    )
+    compare_total = cursor.fetchone()[0] or 0
+
+    if compare_total == 0:
+        return {
+            "base_year": base_year,
+            "compare_year": compare_year,
+            "grade_from": grade_from,
+            "grade_to": grade_to,
+            "has_data": False,
+            "message": f"No Grade {grade_to} records found for {compare_year}.",
+            "retention": {"retained": 0, "dropped": 0, "rate": 0},
+            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
+        }
+
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT r1.lrn)
+        FROM student_records r1
+        JOIN student_records r2 ON r1.lrn = r2.lrn
+        WHERE r1.school_year = %s
+        AND r1.grade_level = %s
+        AND r2.school_year = %s
+        """,
+        (base_year, grade_from, compare_year),
+    )
+    retained = cursor.fetchone()[0] or 0
+
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT r1.lrn)
+        FROM student_records r1
+        JOIN student_records r2 ON r1.lrn = r2.lrn
+        WHERE r1.school_year = %s
+        AND r1.grade_level = %s
+        AND r2.school_year = %s
+        AND r2.grade_level = %s
+        """,
+        (base_year, grade_from, compare_year, grade_to),
+    )
+    promoted = cursor.fetchone()[0] or 0
+
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT r1.lrn)
+        FROM student_records r1
+        JOIN student_records r2 ON r1.lrn = r2.lrn
+        WHERE r1.school_year = %s
+        AND r1.grade_level = %s
+        AND r2.school_year = %s
+        AND r2.grade_level = %s
+        """,
+        (base_year, grade_from, compare_year, grade_from),
+    )
+    repeated = cursor.fetchone()[0] or 0
+
+    retention_dropped = base_total - retained
+    promotion_dropped = base_total - (promoted + repeated)
+
+    return {
+        "base_year": base_year,
+        "compare_year": compare_year,
+        "grade_from": grade_from,
+        "grade_to": grade_to,
+        "has_data": True,
+        "message": "",
+        "retention": {
+            "retained": retained,
+            "dropped": retention_dropped,
+            "rate": round((retained / base_total) * 100, 2),
+        },
+        "promotion": {
+            "promoted": promoted,
+            "repeated": repeated,
+            "dropped": promotion_dropped,
+            "rate": round((promoted / base_total) * 100, 2),
+        },
+    }
+
+
+def get_at_risk_students(cursor):
+    timelines = build_student_timelines(cursor)
+    existing_years = set(get_school_years(cursor))
+    at_risk = []
+
+    for timeline in timelines.values():
+        records = timeline["records"]
+        latest = records[-1]
+
+        if latest["status"] == "TRANSFER_OUT":
+            at_risk.append(
+                {
+                    "lrn": timeline["lrn"],
+                    "name": timeline["name"],
+                    "last_grade": latest["grade_level"],
+                    "last_year": latest["school_year"],
+                    "reason": f"Transferred out after Grade {latest['grade_level']}",
+                    "remarks": latest["remarks"] or "Transferred Out",
+                }
+            )
+            continue
+
+        if latest["grade_level"] < 10 and next_school_year(latest["school_year"]) in existing_years:
+            at_risk.append(
+                {
+                    "lrn": timeline["lrn"],
+                    "name": timeline["name"],
+                    "last_grade": latest["grade_level"],
+                    "last_year": latest["school_year"],
+                    "reason": f"Did not appear after Grade {latest['grade_level']}",
+                    "remarks": latest["remarks"] or "-",
+                }
+            )
+
+    return at_risk
+
+
+def get_csr_breakdown(cursor):
+    breakdown = {
+        grade: {
+            "grade": grade,
+            "transferred_out": 0,
+            "missing_after": 0,
+            "total_left": 0,
+        }
+        for grade in SUPPORTED_GRADES
+    }
+
+    for student in get_at_risk_students(cursor):
+        grade = student["last_grade"]
+        if grade not in breakdown:
+            continue
+
+        if "Transferred out" in student["reason"]:
+            breakdown[grade]["transferred_out"] += 1
+        else:
+            breakdown[grade]["missing_after"] += 1
+
+        breakdown[grade]["total_left"] += 1
+
+    return list(breakdown.values())
+
+
 def style_report_sheet(sheet):
     dark_blue = "12376F"
     light_blue = "EAF1FF"
@@ -797,7 +1076,16 @@ def style_report_sheet(sheet):
     sheet.freeze_panes = "A13"
 
 
-def build_progression_report_workbook(stats, grade_distribution, records, school_year=""):
+def build_progression_report_workbook(
+    stats,
+    grade_distribution,
+    records,
+    school_year="",
+    at_risk_students=None,
+    csr_breakdown=None,
+):
+    at_risk_students = at_risk_students or []
+    csr_breakdown = csr_breakdown or []
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Progression Report"
@@ -845,6 +1133,41 @@ def build_progression_report_workbook(stats, grade_distribution, records, school
         sheet.cell(row=table_start + 1, column=1, value="No records found for this report scope.")
 
     style_report_sheet(sheet)
+
+    risk_sheet = workbook.create_sheet("At-Risk Students")
+    risk_sheet.merge_cells("A1:F1")
+    risk_sheet["A1"] = "At-Risk Students"
+    risk_headers = ["LRN", "Student Name", "Last Grade Seen", "Last School Year", "Reason", "Remarks"]
+    for column, header in enumerate(risk_headers, start=1):
+        risk_sheet.cell(row=5, column=column, value=header)
+
+    for row_index, student in enumerate(at_risk_students, start=6):
+        risk_sheet.cell(row=row_index, column=1, value=student["lrn"])
+        risk_sheet.cell(row=row_index, column=2, value=student["name"])
+        risk_sheet.cell(row=row_index, column=3, value=f"Grade {student['last_grade']}")
+        risk_sheet.cell(row=row_index, column=4, value=student["last_year"])
+        risk_sheet.cell(row=row_index, column=5, value=student["reason"])
+        risk_sheet.cell(row=row_index, column=6, value=student["remarks"])
+
+    if not at_risk_students:
+        risk_sheet.cell(row=6, column=1, value="No at-risk students found.")
+
+    style_report_sheet(risk_sheet)
+
+    csr_sheet = workbook.create_sheet("CSR Breakdown")
+    csr_sheet.merge_cells("A1:D1")
+    csr_sheet["A1"] = "Cohort Survival Leaving-Point Breakdown"
+    csr_headers = ["Leaving Point", "Transferred Out", "Did Not Appear After Grade", "Total Left"]
+    for column, header in enumerate(csr_headers, start=1):
+        csr_sheet.cell(row=5, column=column, value=header)
+
+    for row_index, item in enumerate(csr_breakdown, start=6):
+        csr_sheet.cell(row=row_index, column=1, value=f"Grade {item['grade']}")
+        csr_sheet.cell(row=row_index, column=2, value=item["transferred_out"])
+        csr_sheet.cell(row=row_index, column=3, value=item["missing_after"])
+        csr_sheet.cell(row=row_index, column=4, value=item["total_left"])
+
+    style_report_sheet(csr_sheet)
     return workbook
 
 
@@ -1043,7 +1366,8 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
                         "expected_grade": step["grade"],
                         "actual_grade": record["grade"],
                         "status": record["status"],
-                        "remarks": record["remarks"] or "",
+                        "status_label": humanize_status(record["status"]),
+                        "remarks": format_remarks(record["status"], record["remarks"]),
                     }
                 )
             else:
@@ -1053,6 +1377,7 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
                         "expected_grade": step["grade"],
                         "actual_grade": None,
                         "status": "MISSING",
+                        "status_label": humanize_status("MISSING"),
                         "remarks": "",
                     }
                 )
@@ -1082,6 +1407,7 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
                 "name": name,
                 "path": path_cells,
                 "result": result,
+                "result_label": humanize_status(result),
             }
         )
 
