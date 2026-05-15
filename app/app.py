@@ -486,7 +486,7 @@ def reports():
     grade_distribution = get_grade_distribution(cursor)
     school_years = get_school_years(cursor)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
 
     if (
         SCHOOL_YEAR_PATTERN.match(base_year)
@@ -539,7 +539,7 @@ def export_report():
     grade_distribution = get_grade_distribution(cursor)
     records = get_report_records(cursor, school_year)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
     cursor.close()
     conn.close()
 
@@ -582,7 +582,7 @@ def print_report():
     grade_distribution = get_grade_distribution(cursor)
     records = get_report_records(cursor, school_year)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
     cursor.close()
     conn.close()
 
@@ -1298,7 +1298,7 @@ def get_at_risk_students(cursor):
     return at_risk
 
 
-def get_csr_breakdown(cursor):
+def get_csr_breakdown(at_risk_list):
     breakdown = {
         grade: {
             "grade": grade,
@@ -1310,7 +1310,7 @@ def get_csr_breakdown(cursor):
         for grade in SUPPORTED_GRADES
     }
 
-    for student in get_at_risk_students(cursor):
+    for student in at_risk_list:
         grade = student["last_grade"]
         if grade not in breakdown:
             continue
