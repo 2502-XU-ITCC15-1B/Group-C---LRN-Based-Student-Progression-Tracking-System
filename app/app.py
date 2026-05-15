@@ -13,6 +13,14 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-secret-key")
 
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 SUPPORTED_GRADES = [7, 8, 9, 10]
 SCHOOL_YEAR_PATTERN = re.compile(r"^\d{4}-\d{4}$")
 LRN_PATTERN = re.compile(r"^\d{12}$")
@@ -57,7 +65,10 @@ EDITABLE_RECORD_STATUSES = ["ENROLLED", "TRANSFER_IN", "PENDING_TRANSFER_IN", "T
 
 @app.route("/")
 def root():
-    return redirect(url_for("dashboard"))
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+
+    return redirect(url_for("login"))
 
 
 @app.route("/legacy-dashboard")
@@ -208,11 +219,7 @@ def login():
         session["user_id"] = user["id"]
         session["username"] = user["username"]
         session["role"] = user["role"]
-        flash("Logged in successfully.")
-        next_page = request.args.get("next")
-        if not next_page or not next_page.startswith("/") or next_page.startswith("//"):
-            next_page = url_for("dashboard")
-        return redirect(next_page)
+        return redirect(url_for("dashboard"))
 
     return render_template("login.html")
 
