@@ -52,6 +52,9 @@ def inject_current_user():
     return {"current_user": session.get("username"), "current_role": session.get("role")}
 
 
+EDITABLE_RECORD_STATUSES = ["ENROLLED", "TRANSFER_IN", "PENDING_TRANSFER_IN", "TRANSFER_OUT"]
+
+
 @app.route("/")
 def root():
     return redirect(url_for("dashboard"))
@@ -680,6 +683,7 @@ def student_history(lrn):
             "status": status,
             "status_label": humanize_status(status),
             "remarks": format_remarks(status, remarks),
+            "raw_remarks": normalize_remarks(remarks),
             "updated_at": updated_at,
         }
         for school_year, grade_level, gender, status, remarks, updated_at in cursor.fetchall()
@@ -687,7 +691,7 @@ def student_history(lrn):
 
     cursor.execute(
         """
-        SELECT field_name, old_value, new_value, school_year, grade_level, changed_at
+        SELECT field_name, old_value, new_value, school_year, grade_level, changed_by, changed_at
         FROM student_change_logs
         WHERE lrn = %s
         ORDER BY changed_at DESC
@@ -704,7 +708,84 @@ def student_history(lrn):
         student=student,
         history=history,
         changes=changes,
+        editable_statuses=EDITABLE_RECORD_STATUSES,
     )
+
+
+@app.route("/student/<lrn>/record/update", methods=["POST"])
+@admin_required
+def update_student_record(lrn):
+    ensure_schema()
+
+    if not LRN_PATTERN.match(lrn):
+        flash("Invalid LRN. Use exactly 12 digits.")
+        return redirect(url_for("students"))
+
+    school_year = request.form.get("school_year", "").strip()
+    grade_level = request.form.get("grade_level", "").strip()
+    status = request.form.get("status", "").strip()
+    remarks = normalize_remarks(request.form.get("remarks", ""))
+
+    if not SCHOOL_YEAR_PATTERN.match(school_year):
+        flash("Use school year format YYYY-YYYY before updating a record.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
+        flash("Select a valid Grade 7 to Grade 10 record.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if status not in EDITABLE_RECORD_STATUSES:
+        flash("Select a valid student status.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    grade_level = int(grade_level)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, status, remarks
+        FROM student_records
+        WHERE lrn = %s
+        AND school_year = %s
+        AND grade_level = %s
+        LIMIT 1
+        """,
+        (lrn, school_year, grade_level),
+    )
+    existing = cursor.fetchone()
+
+    if existing is None:
+        cursor.close()
+        conn.close()
+        flash("No matching progression record was found.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    record_id, old_status, old_remarks = existing
+    changes_logged = 0
+    changed_by = session.get("username")
+
+    if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level, changed_by):
+        changes_logged += 1
+    if log_change(cursor, lrn, "record.remarks", old_remarks, remarks, school_year, grade_level, changed_by):
+        changes_logged += 1
+
+    if changes_logged:
+        cursor.execute(
+            """
+            UPDATE student_records
+            SET status = %s, remarks = %s
+            WHERE id = %s
+            """,
+            (status, remarks, record_id),
+        )
+        conn.commit()
+        flash("Student record updated and logged.")
+    else:
+        flash("No changes were made.")
+
+    cursor.close()
+    conn.close()
+    return redirect(url_for("student_history", lrn=lrn))
 
 
 @app.route("/cohort")
@@ -1628,6 +1709,7 @@ def ensure_schema():
         "ALTER TABLE student_records ADD COLUMN remarks TEXT",
         "ALTER TABLE student_records ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
         "ALTER TABLE student_records ADD UNIQUE KEY unique_student_year_grade (lrn, school_year, grade_level)",
+        "ALTER TABLE student_change_logs ADD COLUMN changed_by VARCHAR(80)",
     ]
 
     cursor.execute(
@@ -1640,6 +1722,7 @@ def ensure_schema():
             new_value TEXT,
             school_year VARCHAR(20),
             grade_level INT,
+            changed_by VARCHAR(80),
             changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (lrn) REFERENCES students(lrn)
         )
@@ -1768,7 +1851,7 @@ def normalize_remarks(value):
     return remarks
 
 
-def log_change(cursor, lrn, field_name, old_value, new_value, school_year=None, grade_level=None):
+def log_change(cursor, lrn, field_name, old_value, new_value, school_year=None, grade_level=None, changed_by=None):
     old_text = "" if old_value is None else str(old_value).strip()
     new_text = "" if new_value is None else str(new_value).strip()
 
@@ -1778,10 +1861,10 @@ def log_change(cursor, lrn, field_name, old_value, new_value, school_year=None, 
     cursor.execute(
         """
         INSERT INTO student_change_logs
-            (lrn, field_name, old_value, new_value, school_year, grade_level)
-        VALUES (%s, %s, %s, %s, %s, %s)
+            (lrn, field_name, old_value, new_value, school_year, grade_level, changed_by)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (lrn, field_name, old_text, new_text, school_year, grade_level),
+        (lrn, field_name, old_text, new_text, school_year, grade_level, changed_by),
     )
     return True
 

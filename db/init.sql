@@ -28,6 +28,7 @@ CREATE TABLE student_change_logs (
     new_value TEXT,
     school_year VARCHAR(20),
     grade_level INT,
+    changed_by VARCHAR(80),
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lrn) REFERENCES students(lrn)
 );
