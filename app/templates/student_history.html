@@ -1,176 +1,208 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Student History</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student History | LRN Tracking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/templates/css/dashboard.css">
+  <link rel="stylesheet" href="/templates/css/records_page.css">
+  <style>
+    .history-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
 
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial;
-            background: #0f2f5f;
-            margin: 0;
-            padding: 20px;
-        }
+    .history-toolbar h5 {
+      color: #0d2c59;
+      font-size: 14px;
+      font-weight: 800;
+      margin: 0 0 3px;
+    }
 
-        h1, h2 {
-            color: #2c3e50;
-        }
+    .history-toolbar span {
+      color: #667a96;
+      font-size: 11px;
+    }
 
-        a {
-            color: #2471a3;
-            text-decoration: none;
-        }
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
+    }
 
-        body > p a,
-        body > h1 {
-            color: #ffffff;
-        }
+    .profile-item {
+      background: linear-gradient(145deg, #e8f2ff, #f8fbff);
+      border: 1px solid #d7e5f7;
+      border-radius: 12px;
+      padding: 13px;
+    }
 
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
+    .profile-item .label {
+      color: #5c6f8e;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
 
-        .profile-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(140px, 1fr));
-            gap: 12px;
-        }
+    .profile-item .value {
+      color: #0d2c59;
+      font-size: 13px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
 
-        .profile-item {
-            background: #ecf0f1;
-            border-radius: 6px;
-            padding: 12px;
-        }
+    .history-empty {
+      background: #edf5ff;
+      border: 1px solid #dbe8f7;
+      border-radius: 12px;
+      color: #667a96;
+      padding: 14px;
+      text-align: center;
+    }
 
-        .label {
-            color: #555;
-            font-size: 13px;
-            margin-bottom: 4px;
-        }
+    @media(max-width: 1000px) {
+      .profile-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
 
-        .value {
-            color: #2c3e50;
-            font-weight: bold;
-        }
+    @media(max-width: 600px) {
+      .history-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th {
-            background: #2c3e50;
-            color: white;
-            padding: 10px;
-            text-align: left;
-        }
-
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            vertical-align: top;
-        }
-
-        .empty {
-            color: #777;
-            padding: 12px 0;
-        }
-    </style>
+      .profile-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-
 <body>
-
-<p><a href="/">Back to dashboard</a></p>
-
-<h1>Student History</h1>
-
-<div class="card">
-    <div class="profile-grid">
-        <div class="profile-item">
-            <div class="label">LRN</div>
-            <div class="value">{{ student[0] }}</div>
-        </div>
-
-        <div class="profile-item">
-            <div class="label">Latest Name</div>
-            <div class="value">{{ student[1] }}</div>
-        </div>
-
-        <div class="profile-item">
-            <div class="label">Latest Gender</div>
-            <div class="value">{{ student[2] or 'UNKNOWN' }}</div>
-        </div>
-
-        <div class="profile-item">
-            <div class="label">Last Updated</div>
-            <div class="value">{{ student[3] }}</div>
-        </div>
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="logo-section">
+      <img src="/rsc/schoolLogo.png" alt="Logo">
+      <div class="logo-text"><h5>LRN System</h5><span>Student Tracking</span></div>
     </div>
+    <div class="nav-group"><p>MAIN</p><a href="/dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
+    <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students" class="active"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
+    <div class="nav-group"><a href="/login"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <h3>Student History</h3>
+        <span>Review learner progression records, status updates, and change history.</span>
+      </div>
+      <div class="topbar-right"><div class="profile-box">Admin</div></div>
+    </div>
+
+    <section class="panel mb-4">
+      <div class="history-toolbar">
+        <div>
+          <h5>Student Profile</h5>
+          <span>LRN-based student identity and latest saved information.</span>
+        </div>
+        <a href="/students" class="btn btn-outline-primary"><i class="bi bi-arrow-left"></i> Back to Students</a>
+      </div>
+
+      <div class="profile-grid">
+        <div class="profile-item">
+          <div class="label">LRN</div>
+          <div class="value">{{ student[0] }}</div>
+        </div>
+        <div class="profile-item">
+          <div class="label">Latest Name</div>
+          <div class="value">{{ student[1] }}</div>
+        </div>
+        <div class="profile-item">
+          <div class="label">Latest Gender</div>
+          <div class="value">{{ student[2] or 'UNKNOWN' }}</div>
+        </div>
+        <div class="profile-item">
+          <div class="label">Last Updated</div>
+          <div class="value">{{ student[3] }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel mb-4">
+      <div class="panel-header"><h5>Progression Records</h5></div>
+      {% if history %}
+      <div class="table-responsive">
+        <table class="table custom-table align-middle">
+          <thead>
+            <tr>
+              <th>School Year</th>
+              <th>Grade</th>
+              <th>Gender</th>
+              <th>Status</th>
+              <th>Remarks</th>
+              <th>Updated At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in history %}
+            <tr>
+              <td>{{ record[0] }}</td>
+              <td>Grade {{ record[1] }}</td>
+              <td>{{ record[2] }}</td>
+              <td><span class="badge bg-primary">{{ record[3]|replace('_', ' ')|title }}</span></td>
+              <td>{{ record[4] or '-' }}</td>
+              <td>{{ record[5] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="history-empty">No progression records found.</div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h5>Change Log</h5></div>
+      {% if changes %}
+      <div class="table-responsive">
+        <table class="table custom-table align-middle">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Old Value</th>
+              <th>New Value</th>
+              <th>School Year</th>
+              <th>Grade</th>
+              <th>Changed At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for change in changes %}
+            <tr>
+              <td>{{ change[0]|replace('_', ' ')|title }}</td>
+              <td>{{ change[1] or '-' }}</td>
+              <td>{{ change[2] or '-' }}</td>
+              <td>{{ change[3] or '-' }}</td>
+              <td>{% if change[4] %}Grade {{ change[4] }}{% else %}-{% endif %}</td>
+              <td>{{ change[5] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="history-empty">No changes logged for this LRN.</div>
+      {% endif %}
+    </section>
+  </main>
 </div>
-
-<div class="card">
-    <h2>Progression Records</h2>
-
-    {% if history %}
-    <table>
-        <tr>
-            <th>School Year</th>
-            <th>Grade</th>
-            <th>Gender</th>
-            <th>Status</th>
-            <th>Remarks</th>
-            <th>Updated At</th>
-        </tr>
-
-        {% for record in history %}
-        <tr>
-            <td>{{ record[0] }}</td>
-            <td>Grade {{ record[1] }}</td>
-            <td>{{ record[2] }}</td>
-            <td>{{ record[3] }}</td>
-            <td>{{ record[4] or '' }}</td>
-            <td>{{ record[5] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <div class="empty">No progression records found.</div>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h2>Change Log</h2>
-
-    {% if changes %}
-    <table>
-        <tr>
-            <th>Field</th>
-            <th>Old Value</th>
-            <th>New Value</th>
-            <th>School Year</th>
-            <th>Grade</th>
-            <th>Changed At</th>
-        </tr>
-
-        {% for change in changes %}
-        <tr>
-            <td>{{ change[0] }}</td>
-            <td>{{ change[1] }}</td>
-            <td>{{ change[2] }}</td>
-            <td>{{ change[3] or '' }}</td>
-            <td>{% if change[4] %}Grade {{ change[4] }}{% endif %}</td>
-            <td>{{ change[5] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <div class="empty">No changes logged for this LRN.</div>
-    {% endif %}
-</div>
-
 </body>
 </html>

@@ -108,7 +108,7 @@ def home():
         promotion = {"rate": 0, "promoted": 0, "repeated": 0, "dropped": 0}
 
     return render_template(
-        "index.html",
+        "overview.html",
         students=students,
         total=total,
         male=male,

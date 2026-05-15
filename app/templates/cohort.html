@@ -1,220 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Cohort Tracking</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cohort Tracking | LRN Tracking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/templates/css/dashboard.css">
+  <link rel="stylesheet" href="/templates/css/co_tracking.css">
+  <style>
+    .legacy-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
 
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial;
-            background: #0f2f5f;
-            margin: 0;
-            padding: 20px;
-        }
+    .legacy-metric {
+      background: linear-gradient(145deg, #e8f2ff, #f8fbff);
+      border: 1px solid #d7e5f7;
+      border-radius: 12px;
+      padding: 13px;
+    }
 
-        h1 {
-            color: #ffffff;
-        }
+    .legacy-metric span {
+      color: #5c6f8e;
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
 
-        h2, h3 {
-            color: #2c3e50;
-        }
+    .legacy-metric strong {
+      color: #0d2c59;
+      font-size: 22px;
+      font-weight: 800;
+    }
 
-        a {
-            color: #2471a3;
-            text-decoration: none;
-        }
+    .cell-note {
+      color: #667a96;
+      display: block;
+      font-size: 11px;
+      margin-top: 5px;
+    }
 
-        body > p a {
-            color: #ffffff;
-        }
+    @media(max-width: 1000px) {
+      .legacy-metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
 
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 180px 140px 140px;
-            gap: 10px;
-            align-items: start;
-        }
-
-        input, select, button {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(120px, 1fr));
-            gap: 12px;
-        }
-
-        .metric-box {
-            background: #ecf0f1;
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-        }
-
-        th {
-            background: #2c3e50;
-            color: white;
-            padding: 10px;
-            text-align: left;
-        }
-
-        td {
-            border-bottom: 1px solid #ddd;
-            padding: 10px;
-            vertical-align: top;
-        }
-
-        .status {
-            display: inline-block;
-            border-radius: 999px;
-            padding: 4px 8px;
-            font-size: 12px;
-            font-weight: bold;
-            background: #ecf0f1;
-        }
-
-        .status-COMPLETED,
-        .status-STRAIGHT_PATH,
-        .status-ENROLLED {
-            background: #d5f5e3;
-            color: #196f3d;
-        }
-
-        .status-TRANSFER_IN,
-        .status-PENDING_TRANSFER_IN {
-            background: #d6eaf8;
-            color: #1b4f72;
-        }
-
-        .status-TRANSFER_OUT,
-        .status-MISSING,
-        .status-INCOMPLETE {
-            background: #fadbd8;
-            color: #922b21;
-        }
-
-        .status-REPEATED {
-            background: #fcf3cf;
-            color: #7d6608;
-        }
-
-        .cell-note {
-            color: #555;
-            display: block;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-    </style>
+    @media(max-width: 600px) {
+      .legacy-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-
 <body>
-
-<p><a href="/">Back to dashboard</a></p>
-
-<h1>Cohort Tracking</h1>
-
-<div class="card">
-    <h2>Track Cohort</h2>
-
-    <form method="get" action="/cohort">
-        <div class="form-row">
-            <input
-                type="text"
-                name="start_year"
-                placeholder="Start Year"
-                value="{{ start_year }}"
-                pattern="[0-9]{4}-[0-9]{4}"
-                title="Use format YYYY-YYYY, for example 2026-2027"
-                required
-            >
-
-            <select name="start_grade">
-                {% for grade in grades %}
-                <option value="{{ grade }}" {% if start_grade == grade %}selected{% endif %}>Grade {{ grade }}</option>
-                {% endfor %}
-            </select>
-
-            <button type="submit">Track</button>
-        </div>
-    </form>
-</div>
-
-{% if start_year %}
-<div class="card">
-    <h2>Summary</h2>
-
-    <div class="metrics">
-        <div class="metric-box">Total<br>{{ summary.total }}</div>
-        <div class="metric-box">Straight Path<br>{{ summary.straight_path }}</div>
-        <div class="metric-box">Completed<br>{{ summary.completed }}</div>
-        <div class="metric-box">Repeated<br>{{ summary.repeated }}</div>
-        <div class="metric-box">Transfer In<br>{{ summary.transfer_in }}</div>
-        <div class="metric-box">Transfer Out<br>{{ summary.transfer_out }}</div>
-        <div class="metric-box">Dropped/Missing<br>{{ summary.dropped }}</div>
-        <div class="metric-box">Incomplete<br>{{ summary.incomplete }}</div>
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="logo-section">
+      <img src="/rsc/schoolLogo.png" alt="Logo">
+      <div class="logo-text"><h5>LRN System</h5><span>Student Tracking</span></div>
     </div>
-</div>
+    <div class="nav-group"><p>MAIN</p><a href="/dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
+    <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking" class="active"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
+    <div class="nav-group"><a href="/login"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+  </aside>
 
-<div class="card">
-    <h2>Cohort Path</h2>
+  <main class="main-content">
+    <div class="topbar">
+      <div><h3>Cohort Tracking</h3><span>Track a learner group from the selected entry year and grade.</span></div>
+      <div class="topbar-right"><div class="profile-box">Admin</div></div>
+    </div>
 
-    <table>
-        <tr>
-            <th>LRN</th>
-            <th>Name</th>
-            {% for step in expected_path %}
-            <th>Grade {{ step.grade }}<br>{{ step.school_year }}</th>
+    <section class="panel mb-4">
+      <form method="get" action="/cohort">
+        <div class="tracking-header">
+          <div><h5>Track Cohort</h5><span>Choose the starting school year and grade level.</span></div>
+          <button class="btn custom-btn" type="submit"><i class="bi bi-diagram-3-fill"></i>Track</button>
+        </div>
+        <div class="row g-3 mt-2">
+          <div class="col-md-5">
+            <label class="form-label">Start Year</label>
+            <input class="form-control" type="text" name="start_year" placeholder="2026-2027" value="{{ start_year }}" pattern="[0-9]{4}-[0-9]{4}" title="Use format YYYY-YYYY, for example 2026-2027" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Start Grade</label>
+            <select class="form-select" name="start_grade">
+              {% for grade in grades %}
+              <option value="{{ grade }}" {% if start_grade == grade %}selected{% endif %}>Grade {{ grade }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    {% if start_year %}
+    <section class="panel mb-4">
+      <div class="panel-header"><h5>Summary</h5></div>
+      <div class="legacy-metrics">
+        <div class="legacy-metric"><span>Total</span><strong>{{ summary.total }}</strong></div>
+        <div class="legacy-metric"><span>Straight Path</span><strong>{{ summary.straight_path }}</strong></div>
+        <div class="legacy-metric"><span>Completed</span><strong>{{ summary.completed }}</strong></div>
+        <div class="legacy-metric"><span>Repeated</span><strong>{{ summary.repeated }}</strong></div>
+        <div class="legacy-metric"><span>Transfer In</span><strong>{{ summary.transfer_in }}</strong></div>
+        <div class="legacy-metric"><span>Transfer Out</span><strong>{{ summary.transfer_out }}</strong></div>
+        <div class="legacy-metric"><span>Dropped/Missing</span><strong>{{ summary.dropped }}</strong></div>
+        <div class="legacy-metric"><span>Incomplete</span><strong>{{ summary.incomplete }}</strong></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h5>Cohort Path</h5></div>
+      <div class="table-responsive">
+        <table class="table custom-table align-middle">
+          <thead>
+            <tr>
+              <th>LRN</th>
+              <th>Name</th>
+              {% for step in expected_path %}
+              <th>Grade {{ step.grade }}<br>{{ step.school_year }}</th>
+              {% endfor %}
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in cohort_rows %}
+            <tr>
+              <td><a href="/student/{{ row.lrn }}">{{ row.lrn }}</a></td>
+              <td>{{ row.name }}</td>
+              {% for cell in row.path %}
+              <td>
+                <span class="badge {{ 'bg-success' if cell.status in ['ENROLLED', 'COMPLETED', 'STRAIGHT_PATH'] else 'bg-warning text-dark' if cell.status == 'REPEATED' else 'bg-info' if cell.status in ['TRANSFER_IN', 'PENDING_TRANSFER_IN'] else 'bg-danger' }}">{{ cell.status|replace('_', ' ')|title }}</span>
+                {% if cell.remarks %}<span class="cell-note">{{ cell.remarks }}</span>{% endif %}
+              </td>
+              {% endfor %}
+              <td><span class="badge bg-primary">{{ row.result|replace('_', ' ')|title }}</span></td>
+            </tr>
             {% endfor %}
-            <th>Result</th>
-        </tr>
-
-        {% for row in cohort_rows %}
-        <tr>
-            <td><a href="/student/{{ row.lrn }}">{{ row.lrn }}</a></td>
-            <td>{{ row.name }}</td>
-
-            {% for cell in row.path %}
-            <td>
-                <span class="status status-{{ cell.status }}">{{ cell.status }}</span>
-                {% if cell.remarks %}
-                <span class="cell-note">{{ cell.remarks }}</span>
-                {% endif %}
-            </td>
-            {% endfor %}
-
-            <td><span class="status status-{{ row.result }}">{{ row.result }}</span></td>
-        </tr>
-        {% endfor %}
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </main>
 </div>
-{% endif %}
-
 </body>
 </html>
