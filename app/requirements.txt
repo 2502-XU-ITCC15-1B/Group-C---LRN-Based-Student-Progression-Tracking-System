@@ -4,3 +4,4 @@ gunicorn
 pandas
 openpyxl
 xlrd
+werkzeug

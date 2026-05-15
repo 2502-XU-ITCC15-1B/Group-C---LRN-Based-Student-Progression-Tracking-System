@@ -94,7 +94,7 @@
     <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
     <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students" class="active"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
     <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
-    <div class="nav-group"><a href="/login"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+    <div class="nav-group"><a href="/logout"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
   </aside>
 
   <main class="main-content">
@@ -103,7 +103,7 @@
         <h3>Student History</h3>
         <span>Review learner progression records, status updates, and change history.</span>
       </div>
-      <div class="topbar-right"><div class="profile-box">Admin</div></div>
+      <div class="topbar-right"><div class="profile-box">{{ current_user or 'Admin' }}</div></div>
     </div>
 
     <section class="panel mb-4">

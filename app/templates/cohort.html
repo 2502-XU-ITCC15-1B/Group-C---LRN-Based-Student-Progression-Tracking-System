@@ -67,13 +67,13 @@
     <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
     <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking" class="active"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
     <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
-    <div class="nav-group"><a href="/login"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+    <div class="nav-group"><a href="/logout"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
   </aside>
 
   <main class="main-content">
     <div class="topbar">
       <div><h3>Cohort Tracking</h3><span>Track a learner group from the selected entry year and grade.</span></div>
-      <div class="topbar-right"><div class="profile-box">Admin</div></div>
+      <div class="topbar-right"><div class="profile-box">{{ current_user or 'Admin' }}</div></div>
     </div>
 
     <section class="panel mb-4">
