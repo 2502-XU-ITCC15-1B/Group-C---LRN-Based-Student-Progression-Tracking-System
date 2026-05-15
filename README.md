@@ -92,7 +92,9 @@ http://localhost:5000
 | Students | `/students` | Browse and filter student records |
 | Cohort Tracking | `/cohort-tracking` | Track a learner cohort across school years |
 | Reports | `/reports` | View and export progression reports |
+| Reports (Print) | `/reports/print` | A printer-friendly version of the main report |
 | Login Screen | `/login` | Entry screen for the dashboard |
+| Change Password | `/change-password` | Allows the logged-in user to change their password |
 
 ## Uploading LIS Data
 
@@ -130,6 +132,7 @@ The MySQL database is initialized from `db/init.sql` and creates these tables:
 - `students`
 - `student_records`
 - `student_change_logs`
+- `users`
 
 The default Docker database settings are:
 
@@ -141,6 +144,15 @@ Password: root
 ```
 
 For local development outside Docker, update the database connection in `app/app.py`.
+
+## Default Login
+
+The system initializes with a default administrator account:
+
+- **Username:** `admin`
+- **Password:** `admin123`
+
+It is strongly recommended to change this password immediately after the first login via the "Change Password" page.
 
 ## Useful Docker Commands
 
@@ -183,10 +195,10 @@ docker compose logs -f
 ## Development Notes
 
 - The active Flask application is `app/app.py`.
-- The active dashboard template is `app/templates/index.html`.
+- The main templates are `dashboard.html`, `records_page.html`, `student_history.html`, `reports.html`, `login.html`, `change_password.html`, `logout_confirm.html`, and `print_report.html`.
 - Root-level legacy files such as `app.py` or `index.html`, if present, are not used by the Docker setup.
 - Bootstrap and Bootstrap Icons are loaded from CDNs, so internet access is needed for those assets unless they are vendored locally.
-- The current login screen is an entry page and should not be treated as production-grade authentication.
+- The authentication system is suitable for internal use but should be reviewed by a security expert before public deployment.
 
 ## Branching Guide
 
