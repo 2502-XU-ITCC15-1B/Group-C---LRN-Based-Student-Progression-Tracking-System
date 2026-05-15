@@ -39,6 +39,7 @@
           <input class="form-control" type="text" name="school_year" value="{{ selected_year }}" placeholder="All years or 2025-2026" pattern="[0-9]{4}-[0-9]{4}">
           <button class="btn custom-btn" type="submit">Generate</button>
           <a class="btn btn-outline-primary" href="/reports/export{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Export Excel</a>
+          <a class="btn btn-outline-primary" href="/reports/print{% if selected_year %}?school_year={{ selected_year }}{% endif %}" target="_blank">Print / Save PDF</a>
         </div>
       </form>
     </section>
@@ -111,12 +112,13 @@
       </div>
       <div class="table-responsive mt-3">
         <table class="table custom-table align-middle">
-          <thead><tr><th>Leaving Point</th><th>Transferred Out</th><th>Did Not Appear After Grade</th><th>Total Left</th></tr></thead>
+          <thead><tr><th>Leaving Point</th><th>Transferred Out</th><th>Pending Transfer-In / Needs Verification</th><th>Did Not Appear After Grade</th><th>Total Left</th></tr></thead>
           <tbody>
             {% for item in csr_breakdown %}
             <tr>
               <td>Grade {{ item.grade }}</td>
               <td>{{ item.transferred_out }}</td>
+              <td>{{ item.pending_verification }}</td>
               <td>{{ item.missing_after }}</td>
               <td>{{ item.total_left }}</td>
             </tr>

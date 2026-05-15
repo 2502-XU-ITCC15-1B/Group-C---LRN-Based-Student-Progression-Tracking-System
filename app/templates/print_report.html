@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print Report | LRN Tracking System</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e8edf5;
+      color: #1c2740;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      max-width: 1100px;
+      margin: 18px auto;
+      padding: 0 18px;
+    }
+
+    .toolbar a,
+    .toolbar button {
+      border: 1px solid #12376f;
+      border-radius: 6px;
+      background: #12376f;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 9px 14px;
+      text-decoration: none;
+    }
+
+    .toolbar a {
+      background: #ffffff;
+      color: #12376f;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto 28px;
+      background: #ffffff;
+      padding: 34px;
+      box-shadow: 0 18px 45px rgba(18, 55, 111, 0.18);
+    }
+
+    .report-title {
+      text-align: center;
+      border-bottom: 2px solid #12376f;
+      padding-bottom: 16px;
+      margin-bottom: 22px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: #12376f;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin-top: 3px;
+    }
+
+    h3 {
+      border-bottom: 1px solid #d9e2f3;
+      font-size: 14px;
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+    }
+
+    .muted {
+      color: #63708a;
+    }
+
+    .summary-grid,
+    .rate-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .summary-grid div,
+    .rate-grid div {
+      background: #eef4ff;
+      border: 1px solid #d9e2f3;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .summary-grid span,
+    .rate-grid span {
+      color: #63708a;
+      display: block;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .summary-grid strong,
+    .rate-grid strong {
+      color: #0067b1;
+      font-size: 16px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #d9e2f3;
+      padding: 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #12376f;
+      color: #ffffff;
+      font-size: 11px;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7faff;
+    }
+
+    .empty {
+      color: #63708a;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .page {
+        box-shadow: none;
+        margin: 0;
+        max-width: none;
+        padding: 0;
+      }
+
+      h3 {
+        break-after: avoid;
+      }
+
+      table,
+      .summary-grid,
+      .rate-grid {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <a href="/reports{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Back to Reports</a>
+    <button type="button" onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <main class="page">
+    <header class="report-title">
+      <h1>Alubijid National Comprehensive High School</h1>
+      <div class="muted">Integrated LRN-Based Student Progression Tracking System</div>
+      <h2>Progression Summary Report</h2>
+      <div class="muted">Report Scope: {{ report_scope }}</div>
+    </header>
+
+    <section>
+      <h3>Summary</h3>
+      <div class="summary-grid">
+        <div><span>Total Students</span><strong>{{ stats.total_students }}</strong></div>
+        <div><span>Total Records</span><strong>{{ stats.total_records }}</strong></div>
+        <div><span>Transfer-In</span><strong>{{ stats.transfer_in }}</strong></div>
+        <div><span>Transfer-Out</span><strong>{{ stats.transfer_out }}</strong></div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Computed Rates</h3>
+      <div class="rate-grid">
+        <div><span>Cohort Survival Rate</span><strong>{{ stats.cohort_survival_rate }}%</strong></div>
+        <div><span>Completion Rate</span><strong>{{ stats.completion_rate }}%</strong></div>
+        <div><span>Retention Rate</span><strong>{{ stats.retention_rate }}%</strong></div>
+        <div><span>Repetition Rate</span><strong>{{ stats.repetition_rate }}%</strong></div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Grade Distribution</h3>
+      <table>
+        <thead><tr><th>Grade Level</th><th>Tracked Students</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for item in grade_distribution %}
+          <tr>
+            <td>Grade {{ item.grade }}</td>
+            <td>{{ item.count }}</td>
+            <td>{{ item.label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h3>CSR Leaving-Point Breakdown</h3>
+      <table>
+        <thead><tr><th>Leaving Point</th><th>Transferred Out</th><th>Pending Transfer-In / Needs Verification</th><th>Did Not Appear After Grade</th><th>Total Left</th></tr></thead>
+        <tbody>
+          {% for item in csr_breakdown %}
+          <tr>
+            <td>Grade {{ item.grade }}</td>
+            <td>{{ item.transferred_out }}</td>
+            <td>{{ item.pending_verification }}</td>
+            <td>{{ item.missing_after }}</td>
+            <td>{{ item.total_left }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h3>At-Risk Students</h3>
+      <table>
+        <thead><tr><th>LRN</th><th>Student Name</th><th>Last Grade Seen</th><th>Last School Year</th><th>Reason</th><th>Remarks</th></tr></thead>
+        <tbody>
+          {% for student in at_risk_students %}
+          <tr>
+            <td>{{ student.lrn }}</td>
+            <td>{{ student.name }}</td>
+            <td>Grade {{ student.last_grade }}</td>
+            <td>{{ student.last_year }}</td>
+            <td>{{ student.reason }}</td>
+            <td>{{ student.remarks }}</td>
+          </tr>
+          {% else %}
+          <tr><td class="empty" colspan="6">No at-risk students found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h3>Student Records</h3>
+      <table>
+        <thead><tr><th>LRN</th><th>Student Name</th><th>Sex</th><th>Grade</th><th>School Year</th><th>Status</th><th>Remarks</th></tr></thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td>{{ record.lrn }}</td>
+            <td>{{ record.name }}</td>
+            <td>{{ record.gender }}</td>
+            <td>Grade {{ record.grade_level }}</td>
+            <td>{{ record.school_year }}</td>
+            <td>{{ record.status_label }}</td>
+            <td>{{ record.remarks }}</td>
+          </tr>
+          {% else %}
+          <tr><td class="empty" colspan="7">No records found for this report scope.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

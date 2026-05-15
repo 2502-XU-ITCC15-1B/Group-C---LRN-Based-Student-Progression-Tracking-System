@@ -411,6 +411,37 @@ def export_report():
     )
 
 
+@app.route("/reports/print")
+def print_report():
+    ensure_schema()
+
+    school_year = request.args.get("school_year", "").strip()
+    if school_year and not SCHOOL_YEAR_PATTERN.match(school_year):
+        flash("Use school year format YYYY-YYYY before printing.")
+        return redirect(url_for("reports"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    stats = get_dashboard_stats(cursor)
+    grade_distribution = get_grade_distribution(cursor)
+    records = get_report_records(cursor, school_year)
+    at_risk_students = get_at_risk_students(cursor)
+    csr_breakdown = get_csr_breakdown(cursor)
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "print_report.html",
+        stats=stats,
+        grade_distribution=grade_distribution,
+        records=records,
+        selected_year=school_year,
+        report_scope=school_year or "All Uploaded School Years",
+        at_risk_students=at_risk_students,
+        csr_breakdown=csr_breakdown,
+    )
+
+
 @app.route("/computations")
 def computations():
     return redirect(url_for("reports"))
@@ -1007,14 +1038,21 @@ def get_at_risk_students(cursor):
             continue
 
         if latest["grade_level"] < 10 and next_school_year(latest["school_year"]) in existing_years:
+            if latest["status"] == "PENDING_TRANSFER_IN":
+                reason = f"Pending Transfer-In / Needs Verification after Grade {latest['grade_level']}"
+                remarks = latest["remarks"] or "Pending Transfer-In"
+            else:
+                reason = f"Did not appear after Grade {latest['grade_level']}"
+                remarks = latest["remarks"] or "-"
+
             at_risk.append(
                 {
                     "lrn": timeline["lrn"],
                     "name": timeline["name"],
                     "last_grade": latest["grade_level"],
                     "last_year": latest["school_year"],
-                    "reason": f"Did not appear after Grade {latest['grade_level']}",
-                    "remarks": latest["remarks"] or "-",
+                    "reason": reason,
+                    "remarks": remarks,
                 }
             )
 
@@ -1026,6 +1064,7 @@ def get_csr_breakdown(cursor):
         grade: {
             "grade": grade,
             "transferred_out": 0,
+            "pending_verification": 0,
             "missing_after": 0,
             "total_left": 0,
         }
@@ -1039,6 +1078,8 @@ def get_csr_breakdown(cursor):
 
         if "Transferred out" in student["reason"]:
             breakdown[grade]["transferred_out"] += 1
+        elif "Pending Transfer-In" in student["reason"]:
+            breakdown[grade]["pending_verification"] += 1
         else:
             breakdown[grade]["missing_after"] += 1
 
@@ -1155,17 +1196,24 @@ def build_progression_report_workbook(
     style_report_sheet(risk_sheet)
 
     csr_sheet = workbook.create_sheet("CSR Breakdown")
-    csr_sheet.merge_cells("A1:D1")
+    csr_sheet.merge_cells("A1:E1")
     csr_sheet["A1"] = "Cohort Survival Leaving-Point Breakdown"
-    csr_headers = ["Leaving Point", "Transferred Out", "Did Not Appear After Grade", "Total Left"]
+    csr_headers = [
+        "Leaving Point",
+        "Transferred Out",
+        "Pending Transfer-In / Needs Verification",
+        "Did Not Appear After Grade",
+        "Total Left",
+    ]
     for column, header in enumerate(csr_headers, start=1):
         csr_sheet.cell(row=5, column=column, value=header)
 
     for row_index, item in enumerate(csr_breakdown, start=6):
         csr_sheet.cell(row=row_index, column=1, value=f"Grade {item['grade']}")
         csr_sheet.cell(row=row_index, column=2, value=item["transferred_out"])
-        csr_sheet.cell(row=row_index, column=3, value=item["missing_after"])
-        csr_sheet.cell(row=row_index, column=4, value=item["total_left"])
+        csr_sheet.cell(row=row_index, column=3, value=item["pending_verification"])
+        csr_sheet.cell(row=row_index, column=4, value=item["missing_after"])
+        csr_sheet.cell(row=row_index, column=5, value=item["total_left"])
 
     style_report_sheet(csr_sheet)
     return workbook
