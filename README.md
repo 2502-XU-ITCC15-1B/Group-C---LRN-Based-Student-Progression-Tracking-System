@@ -244,6 +244,17 @@ User: root
 Password: root
 ```
 
+For local development outside Docker, update the database connection in `app/app.py`.
+
+## Default Login
+
+The system initializes with a default administrator account:
+
+- **Username:** `admin`
+- **Password:** `admin123`
+
+It is strongly recommended to change this password immediately after the first login via the "Change Password" page.
+
 ## Useful Docker Commands
 
 Start containers:
@@ -301,7 +312,11 @@ Before demo or deployment, verify:
 - Excel export downloads successfully
 - Print report opens and can be saved as PDF
 
-## Deployment Notes
+- The active Flask application is `app/app.py`.
+- The main templates are `dashboard.html`, `records_page.html`, `student_history.html`, `reports.html`, `login.html`, `change_password.html`, `logout_confirm.html`, and `print_report.html`.
+- Root-level legacy files such as `app.py` or `index.html`, if present, are not used by the Docker setup.
+- Bootstrap and Bootstrap Icons are loaded from CDNs, so internet access is needed for those assets unless they are vendored locally.
+- The authentication system is suitable for internal use but should be reviewed by a security expert before public deployment.
 
 Deploy this as a **web service**, not a static website.
 

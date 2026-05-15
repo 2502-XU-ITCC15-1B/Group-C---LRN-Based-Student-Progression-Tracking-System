@@ -137,14 +137,24 @@ def home():
     cursor.close()
     conn.close()
 
-    try:
-        retention = compute_retention("2024-2025", "2025-2026")
-    except Exception:
-        retention = {"rate": 0, "retained": 0, "dropped": 0}
+    school_years = get_school_years_for_computation()
 
-    try:
-        promotion = compute_promotion("2024-2025", "2025-2026", 9, 10)
-    except Exception:
+    retention = {"rate": 0, "retained": 0, "dropped": 0}
+    promotion = {"rate": 0, "promoted": 0, "repeated": 0, "dropped": 0}
+
+    if len(school_years) >= 2:
+        latest_year = school_years[0]
+        previous_year = school_years[1]
+        try:
+            retention = compute_retention(previous_year, latest_year)
+        except Exception:
+            pass
+        try:
+            promotion = compute_promotion(previous_year, latest_year, 9, 10)
+        except Exception:
+            pass
+    else:
+        retention = {"rate": 0, "retained": 0, "dropped": 0}
         promotion = {"rate": 0, "promoted": 0, "repeated": 0, "dropped": 0}
 
     return render_template(
@@ -210,12 +220,11 @@ def login():
 @app.route("/logout", methods=["GET", "POST"])
 @login_required
 def logout():
-    if request.method == "GET":
-        return render_template("logout_confirm.html")
-
-    session.clear()
-    flash("Logged out successfully.")
-    return redirect(url_for("login"))
+    if request.method == "POST":
+        session.clear()
+        flash("Logged out successfully.")
+        return redirect(url_for("login"))
+    return render_template("logout_confirm.html")
 
 
 @app.route("/change-password", methods=["GET", "POST"])
@@ -265,10 +274,8 @@ def change_password():
         conn.commit()
         cursor.close()
         conn.close()
-
-        flash("Password changed successfully. Please log in again.")
-        session.clear()
-        return redirect(url_for("login"))
+        flash("Password changed successfully.")
+        return redirect(url_for("dashboard"))
 
     return render_template("change_password.html")
 
@@ -479,7 +486,7 @@ def reports():
     grade_distribution = get_grade_distribution(cursor)
     school_years = get_school_years(cursor)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
 
     if (
         SCHOOL_YEAR_PATTERN.match(base_year)
@@ -532,7 +539,7 @@ def export_report():
     grade_distribution = get_grade_distribution(cursor)
     records = get_report_records(cursor, school_year)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
     cursor.close()
     conn.close()
 
@@ -575,7 +582,7 @@ def print_report():
     grade_distribution = get_grade_distribution(cursor)
     records = get_report_records(cursor, school_year)
     at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(cursor)
+    csr_breakdown = get_csr_breakdown(at_risk_students)
     cursor.close()
     conn.close()
 
@@ -620,7 +627,7 @@ def search_student():
 
     if not LRN_PATTERN.match(lrn):
         flash("Enter a valid 12-digit LRN to view student history.")
-        return redirect(url_for("home"))
+        return redirect(url_for("students"))
 
     return redirect(url_for("student_history", lrn=lrn))
 
@@ -632,7 +639,7 @@ def student_history(lrn):
 
     if not LRN_PATTERN.match(lrn):
         flash("Invalid LRN. Use exactly 12 digits.")
-        return redirect(url_for("home"))
+        return redirect(url_for("students"))
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -664,7 +671,7 @@ def student_history(lrn):
         cursor.close()
         conn.close()
         flash("No student found for that LRN.")
-        return redirect(url_for("home"))
+        return redirect(url_for("students"))
 
     cursor.execute(
         """
@@ -708,7 +715,7 @@ def student_history(lrn):
         student=student,
         history=history,
         changes=changes,
-        editable_statuses=EDITABLE_RECORD_STATUSES,
+        editable_statuses=EDITABLE_RECORD_STATUSES
     )
 
 
@@ -764,9 +771,9 @@ def update_student_record(lrn):
     changes_logged = 0
     changed_by = session.get("username")
 
-    if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level, changed_by):
+    if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level, changed_by=changed_by):
         changes_logged += 1
-    if log_change(cursor, lrn, "record.remarks", old_remarks, remarks, school_year, grade_level, changed_by):
+    if log_change(cursor, lrn, "record.remarks", old_remarks, remarks, school_year, grade_level, changed_by=changed_by):
         changes_logged += 1
 
     if changes_logged:
@@ -1291,7 +1298,7 @@ def get_at_risk_students(cursor):
     return at_risk
 
 
-def get_csr_breakdown(cursor):
+def get_csr_breakdown(at_risk_list):
     breakdown = {
         grade: {
             "grade": grade,
@@ -1303,7 +1310,7 @@ def get_csr_breakdown(cursor):
         for grade in SUPPORTED_GRADES
     }
 
-    for student in get_at_risk_students(cursor):
+    for student in at_risk_list:
         grade = student["last_grade"]
         if grade not in breakdown:
             continue
@@ -1869,7 +1876,7 @@ def log_change(cursor, lrn, field_name, old_value, new_value, school_year=None, 
     return True
 
 
-def upsert_student(cursor, lrn, name, gender, school_year, grade_level):
+def upsert_student(cursor, lrn, name, gender, school_year, grade_level, changed_by=None):
     cursor.execute(
         """
         SELECT name, gender
@@ -1893,9 +1900,9 @@ def upsert_student(cursor, lrn, name, gender, school_year, grade_level):
     old_name, old_gender = existing
     changes_logged = 0
 
-    if log_change(cursor, lrn, "student.name", old_name, name, school_year, grade_level):
+    if log_change(cursor, lrn, "student.name", old_name, name, school_year, grade_level, changed_by):
         changes_logged += 1
-    if log_change(cursor, lrn, "student.gender", old_gender, gender, school_year, grade_level):
+    if log_change(cursor, lrn, "student.gender", old_gender, gender, school_year, grade_level, changed_by):
         changes_logged += 1
 
     cursor.execute(
@@ -1909,7 +1916,7 @@ def upsert_student(cursor, lrn, name, gender, school_year, grade_level):
     return changes_logged
 
 
-def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status, remarks):
+def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status, remarks, changed_by=None):
     cursor.execute(
         """
         SELECT id, gender, status, remarks
@@ -1937,11 +1944,11 @@ def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status,
     record_id, old_gender, old_status, old_remarks = existing
     changes_logged = 0
 
-    if log_change(cursor, lrn, "record.gender", old_gender, gender, school_year, grade_level):
+    if log_change(cursor, lrn, "record.gender", old_gender, gender, school_year, grade_level, changed_by):
         changes_logged += 1
-    if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level):
+    if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level, changed_by):
         changes_logged += 1
-    if log_change(cursor, lrn, "record.remarks", old_remarks, remarks, school_year, grade_level):
+    if log_change(cursor, lrn, "record.remarks", old_remarks, remarks, school_year, grade_level, changed_by):
         changes_logged += 1
 
     cursor.execute(
@@ -2054,6 +2061,7 @@ def upload():
         records_inserted = 0
         records_updated = 0
         changes_logged = 0
+        changed_by = session.get("username")
 
         for _, row in df.iterrows():
             lrn = str(row["LRN"]).strip()
@@ -2064,7 +2072,7 @@ def upload():
 
             print("INSERTING:", lrn, name, gender)
 
-            changes_logged += upsert_student(cursor, lrn, name, gender, school_year, grade_level)
+            changes_logged += upsert_student(cursor, lrn, name, gender, school_year, grade_level, changed_by)
             record_action, record_changes = upsert_student_record(
                 cursor,
                 lrn,
@@ -2073,6 +2081,7 @@ def upload():
                 gender,
                 status,
                 remarks,
+                changed_by,
             )
             changes_logged += record_changes
 
@@ -2090,7 +2099,7 @@ def upload():
             f"{records_updated} records updated, "
             f"{changes_logged} changes logged."
         )
-        return redirect(url_for("home"))
+        return redirect(url_for("lis_upload"))
 
     except Exception as e:
         print("\nERROR:", str(e))
@@ -2104,3 +2113,12 @@ def get_db_connection():
         password="root",
         database="mydb",
     )
+
+
+def get_school_years_for_computation():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    years = get_school_years(cursor)
+    cursor.close()
+    conn.close()
+    return years
