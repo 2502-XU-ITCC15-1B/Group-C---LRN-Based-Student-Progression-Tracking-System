@@ -1,7 +1,0 @@
-flask
-mysql-connector-python
-gunicorn
-pandas
-openpyxl
-xlrd
-werkzeug
