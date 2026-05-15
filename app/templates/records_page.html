@@ -115,7 +115,7 @@
 <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="/students/add">
+      <form method="POST" action="/students/add" onsubmit="return confirm('Add this student record to the system?');">
         <div class="modal-header">
           <h5 class="modal-title" id="addStudentModalLabel">Add Student Record</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -161,6 +161,10 @@
             <div class="col-12">
               <label class="form-label">Remarks</label>
               <textarea class="form-control" name="remarks" rows="3"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Type ADD STUDENT to confirm</label>
+              <input class="form-control" type="text" name="confirmation" placeholder="ADD STUDENT" required>
             </div>
           </div>
         </div>

@@ -475,6 +475,11 @@ def add_student():
     grade_level = request.form.get("grade_level", "").strip()
     status = request.form.get("status", "").strip()
     remarks = normalize_remarks(request.form.get("remarks", ""))
+    confirmation = request.form.get("confirmation", "").strip()
+
+    if confirmation != "ADD STUDENT":
+        flash("Type ADD STUDENT to confirm manual student creation.")
+        return redirect(url_for("students"))
 
     if not LRN_PATTERN.match(lrn):
         flash("Enter a valid 12-digit LRN before adding a student.")

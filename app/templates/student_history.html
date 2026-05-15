@@ -268,7 +268,7 @@
           <span>Remove this student and all related progression history from the system.</span>
         </div>
       </div>
-      <form method="POST" action="/student/{{ student[0] }}/delete" class="row g-3 align-items-end">
+      <form method="POST" action="/student/{{ student[0] }}/delete" class="row g-3 align-items-end" onsubmit="return confirm('Delete this student and all related records? This cannot be undone.');">
         <div class="col-md-8">
           <label class="form-label">Type DELETE STUDENT to confirm</label>
           <input class="form-control" type="text" name="confirmation" placeholder="DELETE STUDENT" required>
