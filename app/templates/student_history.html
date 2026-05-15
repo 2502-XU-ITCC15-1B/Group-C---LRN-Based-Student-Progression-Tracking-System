@@ -260,6 +260,24 @@
       <div class="history-empty">No changes logged for this LRN.</div>
       {% endif %}
     </section>
+
+    <section class="panel mt-4">
+      <div class="history-toolbar">
+        <div>
+          <h5>Danger Zone</h5>
+          <span>Remove this student and all related progression history from the system.</span>
+        </div>
+      </div>
+      <form method="POST" action="/student/{{ student[0] }}/delete" class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">Type DELETE STUDENT to confirm</label>
+          <input class="form-control" type="text" name="confirmation" placeholder="DELETE STUDENT" required>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-danger w-100" type="submit">Delete Student</button>
+        </div>
+      </form>
+    </section>
   </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

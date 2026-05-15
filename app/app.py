@@ -457,10 +457,90 @@ def students():
         "records_page.html",
         records=records,
         grades=SUPPORTED_GRADES,
-        statuses=["ENROLLED", "TRANSFER_IN", "PENDING_TRANSFER_IN", "TRANSFER_OUT"],
+        statuses=EDITABLE_RECORD_STATUSES,
         filters=filters,
         stats=stats,
     )
+
+
+@app.route("/students/add", methods=["POST"])
+@admin_required
+def add_student():
+    ensure_schema()
+
+    lrn = request.form.get("lrn", "").strip()
+    name = request.form.get("name", "").strip()
+    gender = normalize_gender(request.form.get("gender", ""))
+    school_year = request.form.get("school_year", "").strip()
+    grade_level = request.form.get("grade_level", "").strip()
+    status = request.form.get("status", "").strip()
+    remarks = normalize_remarks(request.form.get("remarks", ""))
+
+    if not LRN_PATTERN.match(lrn):
+        flash("Enter a valid 12-digit LRN before adding a student.")
+        return redirect(url_for("students"))
+
+    if not name:
+        flash("Student name is required.")
+        return redirect(url_for("students"))
+
+    if gender not in {"MALE", "FEMALE"}:
+        flash("Select a valid sex value.")
+        return redirect(url_for("students"))
+
+    if not SCHOOL_YEAR_PATTERN.match(school_year):
+        flash("Use school year format YYYY-YYYY before adding a student.")
+        return redirect(url_for("students"))
+
+    if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
+        flash("Select a valid Grade 7 to Grade 10 record.")
+        return redirect(url_for("students"))
+
+    if status not in EDITABLE_RECORD_STATUSES:
+        flash("Select a valid student status.")
+        return redirect(url_for("students"))
+
+    grade_level = int(grade_level)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id
+        FROM student_records
+        WHERE lrn = %s
+        AND school_year = %s
+        AND grade_level = %s
+        LIMIT 1
+        """,
+        (lrn, school_year, grade_level),
+    )
+
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        flash(f"A Grade {grade_level} record for {lrn} already exists in {school_year}.")
+        return redirect(url_for("students"))
+
+    changed_by = session.get("username")
+    changes_logged = upsert_student(cursor, lrn, name, gender, school_year, grade_level, changed_by)
+    record_action, record_changes = upsert_student_record(
+        cursor,
+        lrn,
+        school_year,
+        grade_level,
+        gender,
+        status,
+        remarks,
+        changed_by,
+    )
+    changes_logged += record_changes
+    log_change(cursor, lrn, "manual.student_record", "", f"Added Grade {grade_level} record for {school_year}", school_year, grade_level, changed_by)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash(f"Added {name} with {record_action} Grade {grade_level} record. Logged {changes_logged + 1} change(s).")
+    return redirect(url_for("student_history", lrn=lrn))
 
 
 @app.route("/cohort-tracking")
@@ -793,6 +873,45 @@ def update_student_record(lrn):
     cursor.close()
     conn.close()
     return redirect(url_for("student_history", lrn=lrn))
+
+
+@app.route("/student/<lrn>/delete", methods=["POST"])
+@admin_required
+def delete_student(lrn):
+    ensure_schema()
+
+    if not LRN_PATTERN.match(lrn):
+        flash("Invalid LRN. Use exactly 12 digits.")
+        return redirect(url_for("students"))
+
+    confirmation = request.form.get("confirmation", "").strip()
+    if confirmation != "DELETE STUDENT":
+        flash("Type DELETE STUDENT to confirm student deletion.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM students WHERE lrn = %s", (lrn,))
+    student = cursor.fetchone()
+
+    if student is None:
+        cursor.close()
+        conn.close()
+        flash("No student found for that LRN.")
+        return redirect(url_for("students"))
+
+    cursor.execute("SELECT COUNT(*) FROM student_records WHERE lrn = %s", (lrn,))
+    record_count = cursor.fetchone()[0] or 0
+
+    cursor.execute("DELETE FROM student_change_logs WHERE lrn = %s", (lrn,))
+    cursor.execute("DELETE FROM student_records WHERE lrn = %s", (lrn,))
+    cursor.execute("DELETE FROM students WHERE lrn = %s", (lrn,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash(f"Deleted {student[0]} and {record_count} progression record(s).")
+    return redirect(url_for("students"))
 
 
 @app.route("/cohort")
