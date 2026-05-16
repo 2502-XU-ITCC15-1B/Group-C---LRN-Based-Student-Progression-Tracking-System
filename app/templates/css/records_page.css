@@ -30,6 +30,34 @@
   font-size: 12px;
 }
 
+.confirm-action-modal .modal-header {
+  background: #12376f;
+  color: #ffffff;
+}
+
+.confirm-action-modal .modal-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.confirm-action-modal .btn-close {
+  filter: invert(1);
+}
+
+.confirm-action-modal p {
+  color: #12376f;
+  font-weight: 800;
+}
+
+.confirm-detail {
+  background: #eef4ff;
+  border: 1px solid #d9e7fb;
+  border-radius: 10px;
+  color: #5d6f91;
+  font-size: 12px;
+  padding: 12px;
+}
+
 @media(max-width: 768px) {
   .records-header {
     flex-direction: column;
