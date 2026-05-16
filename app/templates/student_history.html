@@ -142,7 +142,13 @@
     </section>
 
     <section class="panel mb-4">
-      <div class="panel-header"><h5>Progression Records</h5></div>
+      <div class="history-toolbar">
+        <div>
+          <h5>Progression Records</h5>
+          <span>Add one record per school year or edit existing status and remarks.</span>
+        </div>
+        <button class="btn custom-btn" type="button" data-bs-toggle="modal" data-bs-target="#addYearRecordModal">Add Year Record</button>
+      </div>
       {% if history %}
       <div class="table-responsive">
         <table class="table custom-table align-middle">
@@ -163,7 +169,7 @@
               <td>{{ record.school_year }}</td>
               <td>Grade {{ record.grade_level }}</td>
               <td>{{ record.gender }}</td>
-              <td><span class="badge bg-primary">{{ record.status_label }}</span></td>
+              <td><span class="badge {{ status_badge_class(record.status) }}">{{ record.status_label }}</span></td>
               <td>{{ record.remarks or '-' }}</td>
               <td>{{ record.updated_at }}</td>
               <td>
@@ -224,6 +230,61 @@
       <div class="history-empty">No progression records found.</div>
       {% endif %}
     </section>
+
+    <div class="modal fade" id="addYearRecordModal" tabindex="-1" aria-labelledby="addYearRecordModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="POST" action="/student/{{ student[0] }}/record/add" onsubmit="return confirm('Add this school year record for this student?');">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addYearRecordModalLabel">Add Year Record</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">School Year</label>
+                <input class="form-control" type="text" name="school_year" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Grade</label>
+                <select class="form-select" name="grade_level" required>
+                  {% for grade in grades %}
+                  <option value="{{ grade }}">Grade {{ grade }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Sex</label>
+                <select class="form-select" name="gender" required>
+                  <option value="">Select</option>
+                  <option value="MALE" {% if student[2] == 'MALE' %}selected{% endif %}>Male</option>
+                  <option value="FEMALE" {% if student[2] == 'FEMALE' %}selected{% endif %}>Female</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status" required>
+                  {% for status in editable_statuses %}
+                  <option value="{{ status }}">{{ status|replace('_', ' ')|title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Remarks</label>
+                <textarea class="form-control" name="remarks" rows="3"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Type ADD RECORD to confirm</label>
+                <input class="form-control" type="text" name="confirmation" placeholder="ADD RECORD" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn custom-btn">Add Record</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <section class="panel">
       <div class="panel-header"><h5>Change Log</h5></div>

@@ -16,7 +16,7 @@ CREATE TABLE student_records (
     status VARCHAR(50),
     remarks TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_student_year_grade (lrn, school_year, grade_level),
+    UNIQUE KEY unique_student_year (lrn, school_year),
     FOREIGN KEY (lrn) REFERENCES students(lrn)
 );
 

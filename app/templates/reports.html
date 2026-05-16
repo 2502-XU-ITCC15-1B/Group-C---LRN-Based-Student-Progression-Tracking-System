@@ -58,56 +58,6 @@
 
     <section class="panel mb-4">
       <div class="report-preview-header">
-        <div><h5>Retention and Promotion Calculator</h5><span class="text-muted">Compare two school years and selected grade movement.</span></div>
-      </div>
-
-      <form class="row g-3 mt-2" method="get" action="/reports">
-        <input type="hidden" name="school_year" value="{{ selected_year }}">
-        <div class="col-md-3">
-          <label class="form-label">Base Year</label>
-          <input class="form-control" type="text" name="base_year" value="{{ base_year }}" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Compare Year</label>
-          <input class="form-control" type="text" name="compare_year" value="{{ compare_year }}" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">From Grade</label>
-          <select class="form-select" name="grade_from">
-            {% for grade in [7, 8, 9, 10] %}
-            <option value="{{ grade }}" {% if grade_from == grade %}selected{% endif %}>Grade {{ grade }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">To Grade</label>
-          <select class="form-select" name="grade_to">
-            {% for grade in [7, 8, 9, 10] %}
-            <option value="{{ grade }}" {% if grade_to == grade %}selected{% endif %}>Grade {{ grade }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn custom-btn w-100" type="submit">Calculate</button>
-        </div>
-      </form>
-
-      {% if calculator %}
-      {% if not calculator.has_data %}
-      <div class="alert alert-warning mt-3">{{ calculator.message }}</div>
-      {% else %}
-      <div class="summary-boxes">
-        <div><span>Retention Rate</span><strong>{{ calculator.retention.rate }}%</strong></div>
-        <div><span>Retained</span><strong>{{ calculator.retention.retained }}</strong></div>
-        <div><span>Promotion Rate</span><strong>{{ calculator.promotion.rate }}%</strong></div>
-        <div><span>Promoted</span><strong>{{ calculator.promotion.promoted }}</strong></div>
-      </div>
-      {% endif %}
-      {% endif %}
-    </section>
-
-    <section class="panel mb-4">
-      <div class="report-preview-header">
         <div><h5>CSR Leaving-Point Breakdown</h5><span class="text-muted">Shows where learners leave the progression path.</span></div>
       </div>
       <div class="table-responsive mt-3">

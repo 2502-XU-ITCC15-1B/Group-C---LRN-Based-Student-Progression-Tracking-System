@@ -49,10 +49,30 @@ def admin_required(view):
 
 @app.context_processor
 def inject_current_user():
-    return {"current_user": session.get("username"), "current_role": session.get("role")}
+    return {
+        "current_user": session.get("username"),
+        "current_role": session.get("role"),
+        "status_badge_class": status_badge_class,
+    }
 
 
 EDITABLE_RECORD_STATUSES = ["ENROLLED", "TRANSFER_IN", "PENDING_TRANSFER_IN", "TRANSFER_OUT"]
+PER_PAGE = 10
+
+
+def status_badge_class(status):
+    classes = {
+        "ENROLLED": "bg-success",
+        "TRANSFER_IN": "bg-info text-dark",
+        "PENDING_TRANSFER_IN": "bg-warning text-dark",
+        "TRANSFER_OUT": "bg-danger",
+        "MISSING": "bg-secondary",
+        "REPEATED": "bg-warning text-dark",
+        "COMPLETED": "bg-primary",
+        "STRAIGHT_PATH": "bg-success",
+        "INCOMPLETE": "bg-secondary",
+    }
+    return classes.get(status, "bg-dark")
 
 
 @app.route("/")
@@ -444,11 +464,17 @@ def students():
         "grade": request.args.get("grade", "").strip(),
         "status": request.args.get("status", "").strip(),
         "year": request.args.get("year", "").strip(),
+        "page": request.args.get("page", "1").strip(),
     }
+    page = int(filters["page"]) if filters["page"].isdigit() and int(filters["page"]) > 0 else 1
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    records = get_student_records(cursor, filters)
+    total_matching = count_student_records(cursor, filters)
+    total_pages = max(1, (total_matching + PER_PAGE - 1) // PER_PAGE)
+    page = min(page, total_pages)
+    filters["page"] = str(page)
+    records = get_student_records(cursor, filters, page, PER_PAGE)
     stats = get_dashboard_stats(cursor)
     cursor.close()
     conn.close()
@@ -460,6 +486,10 @@ def students():
         statuses=EDITABLE_RECORD_STATUSES,
         filters=filters,
         stats=stats,
+        page=page,
+        per_page=PER_PAGE,
+        total_matching=total_matching,
+        total_pages=total_pages,
     )
 
 
@@ -510,20 +540,36 @@ def add_student():
     cursor = conn.cursor()
     cursor.execute(
         """
+        SELECT name
+        FROM students
+        WHERE lrn = %s
+        LIMIT 1
+        """,
+        (lrn,),
+    )
+    existing_student = cursor.fetchone()
+
+    if existing_student:
+        cursor.close()
+        conn.close()
+        flash(f"Duplicate LRN rejected. {lrn} already belongs to {existing_student[0]}.")
+        return redirect(url_for("students"))
+
+    cursor.execute(
+        """
         SELECT id
         FROM student_records
         WHERE lrn = %s
         AND school_year = %s
-        AND grade_level = %s
         LIMIT 1
         """,
-        (lrn, school_year, grade_level),
+        (lrn, school_year),
     )
 
     if cursor.fetchone():
         cursor.close()
         conn.close()
-        flash(f"A Grade {grade_level} record for {lrn} already exists in {school_year}.")
+        flash(f"Duplicate school year rejected. {lrn} already has a record in {school_year}.")
         return redirect(url_for("students"))
 
     changed_by = session.get("username")
@@ -548,6 +594,89 @@ def add_student():
     return redirect(url_for("student_history", lrn=lrn))
 
 
+@app.route("/student/<lrn>/record/add", methods=["POST"])
+@admin_required
+def add_student_year_record(lrn):
+    ensure_schema()
+
+    if not LRN_PATTERN.match(lrn):
+        flash("Invalid LRN. Use exactly 12 digits.")
+        return redirect(url_for("students"))
+
+    gender = normalize_gender(request.form.get("gender", ""))
+    school_year = request.form.get("school_year", "").strip()
+    grade_level = request.form.get("grade_level", "").strip()
+    status = request.form.get("status", "").strip()
+    remarks = normalize_remarks(request.form.get("remarks", ""))
+    confirmation = request.form.get("confirmation", "").strip()
+
+    if confirmation != "ADD RECORD":
+        flash("Type ADD RECORD to confirm adding a new school year record.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if gender not in {"MALE", "FEMALE"}:
+        flash("Select a valid sex value.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if not SCHOOL_YEAR_PATTERN.match(school_year):
+        flash("Use school year format YYYY-YYYY before adding a year record.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
+        flash("Select a valid Grade 7 to Grade 10 record.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    if status not in EDITABLE_RECORD_STATUSES:
+        flash("Select a valid student status.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    grade_level = int(grade_level)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM students WHERE lrn = %s", (lrn,))
+    student = cursor.fetchone()
+
+    if student is None:
+        cursor.close()
+        conn.close()
+        flash("No student found for that LRN.")
+        return redirect(url_for("students"))
+
+    cursor.execute(
+        """
+        SELECT id, grade_level
+        FROM student_records
+        WHERE lrn = %s
+        AND school_year = %s
+        LIMIT 1
+        """,
+        (lrn, school_year),
+    )
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.close()
+        conn.close()
+        flash(f"Duplicate school year rejected. {lrn} already has a Grade {existing[1]} record in {school_year}.")
+        return redirect(url_for("student_history", lrn=lrn))
+
+    changed_by = session.get("username")
+    cursor.execute(
+        """
+        INSERT INTO student_records (lrn, school_year, grade_level, gender, status, remarks)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (lrn, school_year, grade_level, gender, status, remarks),
+    )
+    log_change(cursor, lrn, "manual.student_record", "", f"Added Grade {grade_level} record for {school_year}", school_year, grade_level, changed_by)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash(f"Added Grade {grade_level} record for {student[0]} in {school_year}.")
+    return redirect(url_for("student_history", lrn=lrn))
+
+
 @app.route("/cohort-tracking")
 @login_required
 def cohort_tracking_frontend():
@@ -560,11 +689,6 @@ def reports():
     ensure_schema()
 
     selected_year = request.args.get("school_year", "").strip()
-    base_year = request.args.get("base_year", "").strip()
-    compare_year = request.args.get("compare_year", "").strip()
-    grade_from = request.args.get("grade_from", "7").strip()
-    grade_to = request.args.get("grade_to", "8").strip()
-    calculator = None
     conn = get_db_connection()
     cursor = conn.cursor()
     stats = get_dashboard_stats(cursor)
@@ -572,22 +696,6 @@ def reports():
     school_years = get_school_years(cursor)
     at_risk_students = get_at_risk_students(cursor)
     csr_breakdown = get_csr_breakdown(at_risk_students)
-
-    if (
-        SCHOOL_YEAR_PATTERN.match(base_year)
-        and SCHOOL_YEAR_PATTERN.match(compare_year)
-        and grade_from.isdigit()
-        and grade_to.isdigit()
-        and int(grade_from) in SUPPORTED_GRADES
-        and int(grade_to) in SUPPORTED_GRADES
-    ):
-        calculator = build_year_grade_calculator(
-            cursor,
-            base_year,
-            compare_year,
-            int(grade_from),
-            int(grade_to),
-        )
 
     cursor.close()
     conn.close()
@@ -600,11 +708,6 @@ def reports():
         selected_year=selected_year,
         at_risk_students=at_risk_students,
         csr_breakdown=csr_breakdown,
-        calculator=calculator,
-        base_year=base_year,
-        compare_year=compare_year,
-        grade_from=int(grade_from) if grade_from.isdigit() else 7,
-        grade_to=int(grade_to) if grade_to.isdigit() else 8,
     )
 
 
@@ -800,6 +903,7 @@ def student_history(lrn):
         student=student,
         history=history,
         changes=changes,
+        grades=SUPPORTED_GRADES,
         editable_statuses=EDITABLE_RECORD_STATUSES
     )
 
@@ -1086,34 +1190,50 @@ def get_recent_changes(cursor, limit=5):
     ]
 
 
-def get_student_records(cursor, filters):
-    query = """
-        SELECT s.lrn, s.name, r.gender, r.grade_level, r.school_year, r.status, r.remarks
-        FROM students s
-        JOIN student_records r ON s.lrn = r.lrn
-        WHERE 1=1
-    """
+def build_student_record_filters(filters):
+    where = " WHERE 1=1"
     params = []
 
     if filters.get("q"):
-        query += " AND (s.lrn LIKE %s OR s.name LIKE %s)"
+        where += " AND (s.lrn LIKE %s OR s.name LIKE %s)"
         search = f"%{filters['q']}%"
         params.extend([search, search])
 
     if filters.get("grade") and filters["grade"].isdigit() and int(filters["grade"]) in SUPPORTED_GRADES:
-        query += " AND r.grade_level = %s"
+        where += " AND r.grade_level = %s"
         params.append(int(filters["grade"]))
 
     if filters.get("status"):
-        query += " AND r.status = %s"
+        where += " AND r.status = %s"
         params.append(filters["status"])
 
     if filters.get("year") and SCHOOL_YEAR_PATTERN.match(filters["year"]):
-        query += " AND r.school_year = %s"
+        where += " AND r.school_year = %s"
         params.append(filters["year"])
 
-    query += " ORDER BY r.school_year DESC, r.grade_level, s.name LIMIT 300"
+    return where, params
+
+
+def count_student_records(cursor, filters):
+    where, params = build_student_record_filters(filters)
+    query = """
+        SELECT COUNT(*)
+        FROM students s
+        JOIN student_records r ON s.lrn = r.lrn
+    """ + where
     cursor.execute(query, params)
+    return cursor.fetchone()[0] or 0
+
+
+def get_student_records(cursor, filters, page=1, per_page=PER_PAGE):
+    where, params = build_student_record_filters(filters)
+    offset = (page - 1) * per_page
+    query = """
+        SELECT s.lrn, s.name, r.gender, r.grade_level, r.school_year, r.status, r.remarks
+        FROM students s
+        JOIN student_records r ON s.lrn = r.lrn
+    """ + where + " ORDER BY r.school_year DESC, r.grade_level, s.name LIMIT %s OFFSET %s"
+    cursor.execute(query, params + [per_page, offset])
 
     return [
         {
@@ -1839,7 +1959,9 @@ def ensure_schema():
         "ALTER TABLE students ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
         "ALTER TABLE student_records ADD COLUMN remarks TEXT",
         "ALTER TABLE student_records ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-        "ALTER TABLE student_records ADD UNIQUE KEY unique_student_year_grade (lrn, school_year, grade_level)",
+        "ALTER TABLE student_records ADD INDEX idx_student_records_lrn (lrn)",
+        "ALTER TABLE student_records DROP INDEX unique_student_year_grade",
+        "ALTER TABLE student_records ADD UNIQUE KEY unique_student_year (lrn, school_year)",
         "ALTER TABLE student_change_logs ADD COLUMN changed_by VARCHAR(80)",
     ]
 
@@ -1862,6 +1984,17 @@ def ensure_schema():
 
     cursor.execute(
         """
+        DELETE r1
+        FROM student_records r1
+        JOIN student_records r2
+            ON r1.lrn = r2.lrn
+            AND r1.school_year = r2.school_year
+            AND r1.id < r2.id
+        """
+    )
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(80) NOT NULL UNIQUE,
@@ -1877,7 +2010,7 @@ def ensure_schema():
         try:
             cursor.execute(statement)
         except mysql.connector.Error as error:
-            if error.errno not in (1060, 1061, 1062):
+            if error.errno not in (1060, 1061, 1062, 1091):
                 raise
 
     cursor.execute(
@@ -2024,19 +2157,11 @@ def upsert_student(cursor, lrn, name, gender, school_year, grade_level, changed_
     old_name, old_gender = existing
     changes_logged = 0
 
-    if log_change(cursor, lrn, "student.name", old_name, name, school_year, grade_level, changed_by):
+    if log_change(cursor, lrn, "student.name_conflict", old_name, name, school_year, grade_level, changed_by):
         changes_logged += 1
-    if log_change(cursor, lrn, "student.gender", old_gender, gender, school_year, grade_level, changed_by):
+    if log_change(cursor, lrn, "student.gender_conflict", old_gender, gender, school_year, grade_level, changed_by):
         changes_logged += 1
 
-    cursor.execute(
-        """
-        UPDATE students
-        SET name = %s, gender = %s
-        WHERE lrn = %s
-        """,
-        (name, gender, lrn),
-    )
     return changes_logged
 
 
@@ -2047,11 +2172,10 @@ def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status,
         FROM student_records
         WHERE lrn = %s
         AND school_year = %s
-        AND grade_level = %s
         ORDER BY id DESC
         LIMIT 1
         """,
-        (lrn, school_year, grade_level),
+        (lrn, school_year),
     )
     existing = cursor.fetchone()
 
@@ -2068,6 +2192,10 @@ def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status,
     record_id, old_gender, old_status, old_remarks = existing
     changes_logged = 0
 
+    cursor.execute("SELECT grade_level FROM student_records WHERE id = %s", (record_id,))
+    old_grade = cursor.fetchone()[0]
+    if log_change(cursor, lrn, "record.grade_level", old_grade, grade_level, school_year, grade_level, changed_by):
+        changes_logged += 1
     if log_change(cursor, lrn, "record.gender", old_gender, gender, school_year, grade_level, changed_by):
         changes_logged += 1
     if log_change(cursor, lrn, "record.status", old_status, status, school_year, grade_level, changed_by):
@@ -2078,10 +2206,10 @@ def upsert_student_record(cursor, lrn, school_year, grade_level, gender, status,
     cursor.execute(
         """
         UPDATE student_records
-        SET gender = %s, status = %s, remarks = %s
+        SET grade_level = %s, gender = %s, status = %s, remarks = %s
         WHERE id = %s
         """,
-        (gender, status, remarks, record_id),
+        (grade_level, gender, status, remarks, record_id),
     )
     return "updated", changes_logged
 
@@ -2132,13 +2260,16 @@ def upload():
         grade_level = request.form.get("grade_level")
 
         if not file:
-            return "No file uploaded"
+            flash("No file uploaded.", "upload_error")
+            return redirect(url_for("lis_upload"))
 
         if not school_year or not SCHOOL_YEAR_PATTERN.match(school_year):
-            return "Invalid school year. Use format YYYY-YYYY, for example 2026-2027."
+            flash("Invalid school year. Use format YYYY-YYYY, for example 2026-2027.", "upload_error")
+            return redirect(url_for("lis_upload"))
 
         if not grade_level or not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
-            return "Invalid grade level. Only Grades 7 to 10 are supported."
+            flash("Invalid grade level. Only Grades 7 to 10 are supported.", "upload_error")
+            return redirect(url_for("lis_upload"))
 
         grade_level = int(grade_level)
         df = pd.read_excel(file, header=None)
@@ -2149,7 +2280,8 @@ def upload():
         print(df.head())
 
         if columns is None:
-            return "Column detection failed. Check Excel format."
+            flash("Column detection failed. Check the Excel format and make sure LRN, Name, and Sex columns are present.", "upload_error")
+            return redirect(url_for("lis_upload"))
 
         print("LRN COL:", columns["lrn"])
         print("NAME COL:", columns["name"])
@@ -2227,7 +2359,8 @@ def upload():
 
     except Exception as e:
         print("\nERROR:", str(e))
-        return f"Error occurred: {str(e)}"
+        flash(f"Upload failed: {str(e)}", "upload_error")
+        return redirect(url_for("lis_upload"))
 
 
 def get_db_connection():

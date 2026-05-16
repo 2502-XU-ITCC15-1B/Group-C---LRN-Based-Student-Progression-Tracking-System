@@ -13,7 +13,7 @@ This system is intended for school-level use by the department head or authorize
 - Grade 7 to Grade 10 progression tracking
 - Transfer-in, pending transfer-in, and transfer-out monitoring
 - At-risk student identification
-- Cohort survival, completion, retention, repetition, and promotion calculations
+- Cohort survival, completion, retention, and repetition calculations
 - Excel report generation
 - Print-friendly reports for PDF saving
 - Login, logout, password hashing, access control, and password change
@@ -104,7 +104,6 @@ The cohort tracking module follows students across Grade 7 to Grade 10 using LRN
 The reports module includes:
 
 - Computed progression rates
-- Retention and promotion calculator
 - CSR leaving-point breakdown
 - At-risk students section
 - Excel export
@@ -118,9 +117,6 @@ The system computes:
 - **Completion Rate**: learners with Grade 10 records compared with tracked students
 - **Retention Rate**: learners retained in the system across records
 - **Repetition Rate**: learners appearing in the same grade across different years
-- **Promotion Rate**: learners moving from one selected grade/year to the next expected grade/year
-
-The retention and promotion calculator validates that selected year and grade combinations exist before showing results.
 
 ## Project Structure
 
@@ -307,7 +303,6 @@ Before demo or deployment, verify:
 - Student history shows Grade 7 to Grade 10 movement
 - Manual status/remarks edits create change-log entries
 - Cohort tracking shows expected completed, transfer, repeated, and incomplete students
-- Retention and promotion calculator rejects invalid grade movement
 - Reports page shows at-risk students and CSR breakdown
 - Excel export downloads successfully
 - Print report opens and can be saved as PDF

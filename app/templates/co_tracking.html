@@ -115,11 +115,11 @@
               <td>{{ row.name }}</td>
               {% for cell in row.path %}
               <td>
-                <span class="badge {{ 'bg-success' if cell.status in ['ENROLLED', 'COMPLETED'] else 'bg-warning text-dark' if cell.status in ['REPEATED', 'MISSING'] else 'bg-info' if cell.status in ['TRANSFER_IN', 'PENDING_TRANSFER_IN'] else 'bg-danger' }}">{{ cell.status_label }}</span>
+                <span class="badge {{ status_badge_class(cell.status) }}">{{ cell.status_label }}</span>
                 {% if cell.remarks %}<div class="text-muted small">{{ cell.remarks }}</div>{% endif %}
               </td>
               {% endfor %}
-              <td><span class="badge bg-primary">{{ row.result_label }}</span></td>
+              <td><span class="badge {{ status_badge_class(row.result) }}">{{ row.result_label }}</span></td>
             </tr>
             {% else %}
             <tr>

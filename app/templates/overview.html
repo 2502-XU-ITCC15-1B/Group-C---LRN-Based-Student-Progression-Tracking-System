@@ -155,7 +155,7 @@
                 <td>{{ student[2] }}</td>
                 <td>Grade {{ student[3] }}</td>
                 <td>{{ student[4] }}</td>
-                <td><span class="badge bg-primary">{{ student[5]|replace('_', ' ')|title }}</span></td>
+                <td><span class="badge {{ status_badge_class(student[5]) }}">{{ student[5]|replace('_', ' ')|title }}</span></td>
                 <td>{{ student[6] or '-' }}</td>
               </tr>
               {% else %}
