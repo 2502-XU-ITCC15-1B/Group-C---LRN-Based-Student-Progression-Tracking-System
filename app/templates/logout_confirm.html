@@ -9,7 +9,9 @@
   <style>
     body {
       min-height: 100vh;
-      background: #12376f;
+      background: 
+        radial-gradient(circle at top left, rgba(0,103,177,0.34), transparent 34rem),
+        linear-gradient(135deg, #06162f 0%, #102a63 46%, #0b3c69 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -43,7 +45,7 @@
     <p class="mb-4">You are currently signed in as {{ current_user or 'Admin' }}.</p>
     <div class="d-flex gap-2 justify-content-center">
       <form method="POST" action="/logout">
-        <button class="btn btn-danger" type="submit">Yes, Log Out</button>
+        <button class="btn btn-danger" type="submit">Log Out</button>
       </form>
       <a class="btn btn-outline-primary" href="/dashboard">Cancel</a>
     </div>
