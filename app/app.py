@@ -1979,6 +1979,35 @@ def ensure_schema():
 
     cursor.execute(
         """
+        CREATE TABLE IF NOT EXISTS students (
+            lrn VARCHAR(20) PRIMARY KEY,
+            name VARCHAR(255),
+            gender VARCHAR(10),
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS student_records (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            lrn VARCHAR(20),
+            school_year VARCHAR(20),
+            grade_level INT,
+            gender VARCHAR(10),
+            status VARCHAR(50),
+            remarks TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_student_year (lrn, school_year),
+            INDEX idx_student_records_lrn (lrn),
+            FOREIGN KEY (lrn) REFERENCES students(lrn)
+        )
+        """
+    )
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS student_change_logs (
             id INT AUTO_INCREMENT PRIMARY KEY,
             lrn VARCHAR(20),
