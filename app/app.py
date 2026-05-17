@@ -14,6 +14,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-secret-key")
 
 
+@app.route("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private, max-age=0"
@@ -2371,12 +2376,22 @@ def upload():
 
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host="db",
-        user="root",
-        password="root",
-        database="mydb",
-    )
+    config = {
+        "host": os.environ.get("DB_HOST", "db"),
+        "port": int(os.environ.get("DB_PORT", "3306")),
+        "user": os.environ.get("DB_USER", "root"),
+        "password": os.environ.get("DB_PASSWORD", "root"),
+        "database": os.environ.get("DB_NAME", "mydb"),
+    }
+
+    ssl_disabled = os.environ.get("DB_SSL_DISABLED", "").lower() in {"1", "true", "yes"}
+    ssl_ca = os.environ.get("DB_SSL_CA")
+    if not ssl_disabled and config["host"] != "db":
+        config["ssl_disabled"] = False
+        if ssl_ca:
+            config["ssl_ca"] = ssl_ca
+
+    return mysql.connector.connect(**config)
 
 
 def get_school_years_for_computation():
