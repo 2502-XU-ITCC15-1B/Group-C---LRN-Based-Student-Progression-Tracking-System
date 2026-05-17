@@ -88,6 +88,14 @@ def status_badge_class(status):
     return classes.get(status, "bg-dark")
 
 
+def is_valid_school_year(school_year):
+    if not school_year or not SCHOOL_YEAR_PATTERN.match(school_year):
+        return False
+
+    start_year, end_year = [int(part) for part in school_year.split("-")]
+    return end_year == start_year + 1
+
+
 @app.route("/")
 def root():
     if "user_id" in session:
@@ -348,8 +356,8 @@ def delete_batch_records():
     grade_level = request.form.get("grade_level", "").strip()
     confirmation = request.form.get("confirmation", "").strip()
 
-    if not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before deleting a batch.")
+    if not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before deleting a batch.")
         return redirect(url_for("lis_upload"))
 
     if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
@@ -535,8 +543,8 @@ def add_student():
         flash("Select a valid sex value.")
         return redirect(url_for("students"))
 
-    if not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before adding a student.")
+    if not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before adding a student.")
         return redirect(url_for("students"))
 
     if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
@@ -630,8 +638,8 @@ def add_student_year_record(lrn):
         flash("Select a valid sex value.")
         return redirect(url_for("student_history", lrn=lrn))
 
-    if not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before adding a year record.")
+    if not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before adding a year record.")
         return redirect(url_for("student_history", lrn=lrn))
 
     if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
@@ -701,6 +709,10 @@ def reports():
     ensure_schema()
 
     selected_year = request.args.get("school_year", "").strip()
+    if selected_year and not is_valid_school_year(selected_year):
+        flash("Use school year format YYYY-YYYY with consecutive years for reports.")
+        selected_year = ""
+
     conn = get_db_connection()
     cursor = conn.cursor()
     stats = get_dashboard_stats(cursor)
@@ -729,8 +741,8 @@ def export_report():
     ensure_schema()
 
     school_year = request.args.get("school_year", "").strip()
-    if school_year and not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before exporting.")
+    if school_year and not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before exporting.")
         return redirect(url_for("reports"))
 
     conn = get_db_connection()
@@ -772,8 +784,8 @@ def print_report():
     ensure_schema()
 
     school_year = request.args.get("school_year", "").strip()
-    if school_year and not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before printing.")
+    if school_year and not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before printing.")
         return redirect(url_for("reports"))
 
     conn = get_db_connection()
@@ -934,8 +946,8 @@ def update_student_record(lrn):
     status = request.form.get("status", "").strip()
     remarks = normalize_remarks(request.form.get("remarks", ""))
 
-    if not SCHOOL_YEAR_PATTERN.match(school_year):
-        flash("Use school year format YYYY-YYYY before updating a record.")
+    if not is_valid_school_year(school_year):
+        flash("Use school year format YYYY-YYYY with consecutive years before updating a record.")
         return redirect(url_for("student_history", lrn=lrn))
 
     if not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:
@@ -1056,8 +1068,8 @@ def cohort_tracking():
     expected_path = []
 
     if start_year:
-        if not SCHOOL_YEAR_PATTERN.match(start_year):
-            flash("Use school year format YYYY-YYYY for cohort tracking.")
+        if not is_valid_school_year(start_year):
+            flash("Use school year format YYYY-YYYY with consecutive years for cohort tracking.")
             return redirect(url_for("cohort_tracking"))
 
         if not start_grade.isdigit() or int(start_grade) not in SUPPORTED_GRADES:
@@ -1219,7 +1231,7 @@ def build_student_record_filters(filters):
         where += " AND r.status = %s"
         params.append(filters["status"])
 
-    if filters.get("year") and SCHOOL_YEAR_PATTERN.match(filters["year"]):
+    if filters.get("year") and is_valid_school_year(filters["year"]):
         where += " AND r.school_year = %s"
         params.append(filters["year"])
 
@@ -2297,15 +2309,15 @@ def upload():
         ensure_schema()
 
         file = request.files["file"]
-        school_year = request.form.get("school_year")
+        school_year = request.form.get("school_year", "").strip()
         grade_level = request.form.get("grade_level")
 
         if not file:
             flash("No file uploaded.", "upload_error")
             return redirect(url_for("lis_upload"))
 
-        if not school_year or not SCHOOL_YEAR_PATTERN.match(school_year):
-            flash("Invalid school year. Use format YYYY-YYYY, for example 2026-2027.", "upload_error")
+        if not is_valid_school_year(school_year):
+            flash("Invalid school year. Use consecutive format YYYY-YYYY, for example 2025-2026.", "upload_error")
             return redirect(url_for("lis_upload"))
 
         if not grade_level or not grade_level.isdigit() or int(grade_level) not in SUPPORTED_GRADES:

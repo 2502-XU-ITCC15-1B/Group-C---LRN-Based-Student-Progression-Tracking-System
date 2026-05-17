@@ -36,7 +36,7 @@
           <span>Filter by school year, then export a formatted Excel summary.</span>
         </div>
         <div class="report-actions">
-          <input class="form-control" type="text" name="school_year" value="{{ selected_year }}" placeholder="All years or 2025-2026" pattern="[0-9]{4}-[0-9]{4}">
+          <input class="form-control" type="text" name="school_year" value="{{ selected_year }}" placeholder="All years or 2025-2026" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2025-2026">
           <button class="btn custom-btn" type="submit">Generate</button>
           <a class="btn btn-outline-primary" href="/reports/export{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Export Excel</a>
           <a class="btn btn-outline-primary" href="/reports/print{% if selected_year %}?school_year={{ selected_year }}{% endif %}" target="_blank">Print / Save PDF</a>

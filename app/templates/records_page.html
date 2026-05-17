@@ -76,7 +76,7 @@
         </div>
         <div class="col-md-2">
           <label class="form-label">School Year</label>
-          <input class="form-control" type="text" name="year" value="{{ filters.year }}" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}">
+          <input class="form-control" type="text" name="year" value="{{ filters.year }}" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2025-2026">
         </div>
         <div class="col-md-2 d-flex align-items-end gap-2">
           <button class="btn custom-btn w-100" type="submit">Filter</button>
@@ -165,7 +165,7 @@
             </div>
             <div class="col-md-3">
               <label class="form-label">School Year</label>
-              <input class="form-control" type="text" name="school_year" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}" required>
+              <input class="form-control" type="text" name="school_year" placeholder="2025-2026" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2025-2026" required>
             </div>
             <div class="col-md-3">
               <label class="form-label">Status</label>

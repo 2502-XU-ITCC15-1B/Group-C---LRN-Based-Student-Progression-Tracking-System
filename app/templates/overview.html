@@ -47,7 +47,7 @@
           </div>
           <div class="mb-2">
             <label class="form-label">School Year</label>
-            <input class="form-control" type="text" name="school_year" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" title="Use format YYYY-YYYY, for example 2026-2027" required>
+            <input class="form-control" type="text" name="school_year" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2026-2027" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Grade Level</label>
@@ -76,7 +76,7 @@
           <form action="/cohort-tracking" method="get">
             <div class="mb-2">
               <label class="form-label">Start Year</label>
-              <input class="form-control" type="text" name="start_year" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" title="Use format YYYY-YYYY, for example 2026-2027" required>
+              <input class="form-control" type="text" name="start_year" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2026-2027" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Start Grade</label>
@@ -101,7 +101,7 @@
               <option value="{{ grade }}" {% if request.args.get('grade') == grade|string %}selected{% endif %}>Grade {{ grade }}</option>
               {% endfor %}
             </select>
-            <input class="form-control" type="text" name="year" placeholder="All Years" value="{{ request.args.get('year', '') }}" pattern="[0-9]{4}-[0-9]{4}" title="Use format YYYY-YYYY, for example 2026-2027">
+            <input class="form-control" type="text" name="year" placeholder="All Years" value="{{ request.args.get('year', '') }}" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2026-2027">
             <button class="btn custom-btn" type="submit">Filter</button>
           </form>
         </div>
@@ -178,6 +178,7 @@
                 <td>{{ change[1]|replace('_', ' ')|title }}</td>
                 <td>{{ change[2] or '-' }}</td>
                 <td>{{ change[3] or '-' }}</td>
+                <td>{{ change[4] or '-' }}</td>
                 <td>{{ change[4] or '-' }}</td>
                 <td>{% if change[5] %}Grade {{ change[5] }}{% else %}-{% endif %}</td>
                 <td>{{ change[6] }}</td>

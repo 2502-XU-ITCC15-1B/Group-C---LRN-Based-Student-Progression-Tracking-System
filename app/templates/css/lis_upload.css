@@ -57,6 +57,37 @@
   font-size: 15px;
 }
 
+#uploadErrorModal .modal-content {
+  border: 1px solid rgba(18, 55, 111, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(3, 18, 42, 0.24);
+}
+
+#uploadErrorModal .modal-header {
+  background: #ffffff;
+  border-bottom: 1px solid #d9e7fb;
+}
+
+#uploadErrorModal .modal-title {
+  color: #12376f;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+#uploadErrorModal .modal-body p {
+  color: #12376f;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#uploadErrorModal .btn-close {
+  opacity: 0.72;
+}
+
+#uploadErrorModal .modal-footer {
+  border-top: 1px solid #d9e7fb;
+}
+
 @media(max-width: 1000px) {
   .upload-grid {
     grid-template-columns: 1fr;
