@@ -185,11 +185,11 @@
       <h1>Alubijid National Comprehensive High School</h1>
       <div class="muted">Integrated LRN-Based Student Progression Tracking System</div>
       <h2>Progression Summary Report</h2>
-      <div class="muted">Report Scope: {{ report_scope }}</div>
+      <div class="muted">Student Records Scope: {{ report_scope }}</div>
     </header>
 
     <section>
-      <h3>Summary</h3>
+      <h3>System-Wide Summary</h3>
       <div class="summary-grid">
         <div><span>Total Students</span><strong>{{ stats.total_students }}</strong></div>
         <div><span>Total Records</span><strong>{{ stats.total_records }}</strong></div>
@@ -199,7 +199,7 @@
     </section>
 
     <section>
-      <h3>Computed Rates</h3>
+      <h3>System-Wide Progression Indicators</h3>
       <div class="rate-grid">
         <div><span>Cohort Survival Rate</span><strong>{{ stats.cohort_survival_rate }}%</strong></div>
         <div><span>Completion Rate</span><strong>{{ stats.completion_rate }}%</strong></div>
@@ -225,7 +225,7 @@
     </section>
 
     <section>
-      <h3>CSR Leaving-Point Breakdown</h3>
+      <h3>Cohort Survival Leaving-Point Breakdown</h3>
       <table>
         <thead><tr><th>Leaving Point</th><th>Transferred Out</th><th>Pending Transfer-In / Needs Verification</th><th>Did Not Appear After Grade</th><th>Total Left</th></tr></thead>
         <tbody>
@@ -243,7 +243,7 @@
     </section>
 
     <section>
-      <h3>At-Risk Students</h3>
+      <h3>At-Risk Learners for Review</h3>
       <table>
         <thead><tr><th>LRN</th><th>Student Name</th><th>Last Grade Seen</th><th>Last School Year</th><th>Reason</th><th>Remarks</th></tr></thead>
         <tbody>

@@ -8,6 +8,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import os
 import pandas as pd
 import re
+import secrets
+import tempfile
+import time
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -30,6 +33,8 @@ SUPPORTED_GRADES = [7, 8, 9, 10]
 SCHOOL_YEAR_PATTERN = re.compile(r"^\d{4}-\d{4}$")
 LRN_PATTERN = re.compile(r"^\d{12}$")
 SCHEMA_READY = False
+SUPPORTED_UPLOAD_EXTENSIONS = {".xls", ".xlsx", ".csv"}
+PENDING_UPLOAD_TTL_SECONDS = 900
 
 
 def login_required(view):
@@ -96,127 +101,138 @@ def is_valid_school_year(school_year):
     return end_year == start_year + 1
 
 
+def read_lis_upload(file):
+    filename = (file.filename or "").strip().lower()
+    extension = os.path.splitext(filename)[1]
+
+    if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
+        raise ValueError("Unsupported file type. Upload a LIS/SF1 file in .xlsx, .xls, or .csv format.")
+
+    if extension == ".csv":
+        try:
+            return pd.read_csv(file, header=None, dtype=str, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            file.stream.seek(0)
+            return pd.read_csv(file, header=None, dtype=str, encoding="latin1")
+
+    return pd.read_excel(file, header=None)
+
+
+def detect_upload_metadata(df):
+    detected = {"school_year": None, "grade_level": None}
+
+    for _, row in df.head(15).iterrows():
+        for value in row:
+            text = str(value).upper().replace("\n", " ").strip()
+            if not text or text == "NAN":
+                continue
+
+            if detected["school_year"] is None:
+                year_match = re.search(r"\b(\d{4})\s*[-–—]\s*(\d{4})\b", text)
+                if year_match:
+                    school_year = f"{year_match.group(1)}-{year_match.group(2)}"
+                    if is_valid_school_year(school_year):
+                        detected["school_year"] = school_year
+
+            if detected["grade_level"] is None:
+                grade_match = re.search(r"\b(?:GRADE|GRADE LEVEL|GR\.?)\s*[:\-]?\s*(7|8|9|10)\b", text)
+                if grade_match:
+                    detected["grade_level"] = int(grade_match.group(1))
+
+            if detected["school_year"] and detected["grade_level"]:
+                return detected
+
+    return detected
+
+
+def get_upload_metadata_mismatches(detected, school_year, grade_level):
+    mismatches = []
+
+    if detected.get("school_year") and detected["school_year"] != school_year:
+        mismatches.append({
+            "field": "School Year",
+            "detected": detected["school_year"],
+            "selected": school_year,
+        })
+
+    if detected.get("grade_level") and detected["grade_level"] != grade_level:
+        mismatches.append({
+            "field": "Grade Level",
+            "detected": f"Grade {detected['grade_level']}",
+            "selected": f"Grade {grade_level}",
+        })
+
+    return mismatches
+
+
+def get_pending_upload_dir():
+    path = os.path.join(tempfile.gettempdir(), "lrn_upload_confirmations")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_pending_upload(file):
+    extension = os.path.splitext(file.filename or "")[1].lower()
+    token = secrets.token_urlsafe(24)
+    path = os.path.join(get_pending_upload_dir(), f"{token}{extension}")
+
+    file.stream.seek(0)
+    with open(path, "wb") as output:
+        output.write(file.stream.read())
+
+    pending_uploads = session.get("pending_uploads", {})
+    pending_uploads[token] = {
+        "path": path,
+        "filename": os.path.basename(file.filename or f"upload{extension}"),
+        "created_at": time.time(),
+    }
+    session["pending_uploads"] = pending_uploads
+    return token
+
+
+def pop_pending_upload(token):
+    pending_uploads = session.get("pending_uploads", {})
+    pending = pending_uploads.pop(token, None)
+    session["pending_uploads"] = pending_uploads
+
+    if not pending:
+        return None
+
+    is_expired = time.time() - pending.get("created_at", 0) > PENDING_UPLOAD_TTL_SECONDS
+    if is_expired or not os.path.exists(pending.get("path", "")):
+        try:
+            os.remove(pending.get("path", ""))
+        except OSError:
+            pass
+        return None
+
+    return pending
+
+
+class StoredUpload:
+    def __init__(self, path, filename):
+        self.filename = filename
+        self.stream = open(path, "rb")
+
+    def read(self, *args, **kwargs):
+        return self.stream.read(*args, **kwargs)
+
+    def seek(self, *args, **kwargs):
+        return self.stream.seek(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+    def close(self):
+        self.stream.close()
+
+
 @app.route("/")
 def root():
     if "user_id" in session:
         return redirect(url_for("dashboard"))
 
     return redirect(url_for("login"))
-
-
-@app.route("/legacy-dashboard")
-@login_required
-def home():
-    ensure_schema()
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    grade = request.args.get("grade")
-    year = request.args.get("year")
-
-    base_query = """
-        FROM students s
-        JOIN student_records r ON s.lrn = r.lrn
-        WHERE 1=1
-    """
-
-    params = []
-
-    if grade and grade.isdigit() and int(grade) in SUPPORTED_GRADES:
-        base_query += " AND r.grade_level = %s"
-        params.append(int(grade))
-
-    if year:
-        base_query += " AND r.school_year = %s"
-        params.append(year)
-
-    cursor.execute(
-        """
-        SELECT s.lrn, s.name, r.gender, r.grade_level, r.school_year, r.status, r.remarks
-        """
-        + base_query
-        + """
-        ORDER BY r.school_year, r.grade_level, s.name
-        """,
-        params,
-    )
-    students = cursor.fetchall()
-
-    cursor.execute(
-        """
-        SELECT lrn, field_name, old_value, new_value, school_year, grade_level, changed_at
-        FROM student_change_logs
-        ORDER BY changed_at DESC
-        LIMIT 10
-        """
-    )
-    recent_changes = cursor.fetchall()
-
-    cursor.execute(
-        """
-        SELECT
-            COUNT(*),
-            SUM(CASE WHEN UPPER(r.gender) LIKE 'M%' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN UPPER(r.gender) LIKE 'F%' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN r.status = 'TRANSFER_IN' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN r.status = 'PENDING_TRANSFER_IN' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN r.status = 'TRANSFER_OUT' THEN 1 ELSE 0 END)
-        """
-        + base_query,
-        params,
-    )
-    result = cursor.fetchone()
-
-    total = result[0]
-    male = result[1] or 0
-    female = result[2] or 0
-    transfer_in = result[3] or 0
-    pending_transfer_in = result[4] or 0
-    transfer_out = result[5] or 0
-
-    male_pct = round((male / total) * 100, 2) if total > 0 else 0
-    female_pct = round((female / total) * 100, 2) if total > 0 else 0
-
-    cursor.close()
-    conn.close()
-
-    school_years = get_school_years_for_computation()
-
-    retention = {"rate": 0, "retained": 0, "dropped": 0}
-    promotion = {"rate": 0, "promoted": 0, "repeated": 0, "dropped": 0}
-
-    if len(school_years) >= 2:
-        latest_year = school_years[0]
-        previous_year = school_years[1]
-        try:
-            retention = compute_retention(previous_year, latest_year)
-        except Exception:
-            pass
-        try:
-            promotion = compute_promotion(previous_year, latest_year, 9, 10)
-        except Exception:
-            pass
-    else:
-        retention = {"rate": 0, "retained": 0, "dropped": 0}
-        promotion = {"rate": 0, "promoted": 0, "repeated": 0, "dropped": 0}
-
-    return render_template(
-        "overview.html",
-        students=students,
-        total=total,
-        male=male,
-        female=female,
-        transfer_in=transfer_in,
-        pending_transfer_in=pending_transfer_in,
-        transfer_out=transfer_out,
-        male_pct=male_pct,
-        female_pct=female_pct,
-        retention=retention,
-        promotion=promotion,
-        grades=SUPPORTED_GRADES,
-        recent_changes=recent_changes,
-    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -344,6 +360,16 @@ def dashboard():
 @app.route("/lis-upload")
 @login_required
 def lis_upload():
+    cancel_upload = request.args.get("cancel_upload", "").strip()
+    if cancel_upload:
+        pending = pop_pending_upload(cancel_upload)
+        if pending:
+            try:
+                os.remove(pending["path"])
+            except OSError:
+                pass
+        return redirect(url_for("lis_upload"))
+
     return render_template("lis_upload.html", grades=SUPPORTED_GRADES)
 
 
@@ -697,12 +723,6 @@ def add_student_year_record(lrn):
     return redirect(url_for("student_history", lrn=lrn))
 
 
-@app.route("/cohort-tracking")
-@login_required
-def cohort_tracking_frontend():
-    return cohort_tracking()
-
-
 @app.route("/reports")
 @login_required
 def reports():
@@ -808,18 +828,6 @@ def print_report():
         at_risk_students=at_risk_students,
         csr_breakdown=csr_breakdown,
     )
-
-
-@app.route("/computations")
-@login_required
-def computations():
-    return redirect(url_for("reports"))
-
-
-@app.route("/users")
-@admin_required
-def users():
-    return redirect(url_for("dashboard"))
 
 
 @app.route("/templates/<path:filename>")
@@ -1047,7 +1055,7 @@ def delete_student(lrn):
     return redirect(url_for("students"))
 
 
-@app.route("/cohort")
+@app.route("/cohort-tracking")
 @login_required
 def cohort_tracking():
     ensure_schema()
@@ -1643,11 +1651,11 @@ def build_progression_report_workbook(
     sheet["A1"] = "Integrated LRN-Based Student Progression Tracking System"
     sheet["A2"] = "Report Type"
     sheet["B2"] = "Progression Summary"
-    sheet["A3"] = "School Year"
+    sheet["A3"] = "Student Records Scope"
     sheet["B3"] = report_scope
 
     summary_rows = [
-        ("Metric", "Value", "", "Rate", "Value", "", "Grade", "Tracked Students"),
+        ("System-Wide Metric", "Value", "", "System-Wide Rate", "Value", "", "Grade", "Tracked Students"),
         ("Total Students", stats["total_students"], "", "Cohort Survival Rate", f"{stats['cohort_survival_rate']}%", "", "Grade 7", grade_distribution[0]["count"]),
         ("Total Records", stats["total_records"], "", "Completion Rate", f"{stats['completion_rate']}%", "", "Grade 8", grade_distribution[1]["count"]),
         ("Transfer-In", stats["transfer_in"], "", "Retention Rate", f"{stats['retention_rate']}%", "", "Grade 9", grade_distribution[2]["count"]),
@@ -1682,9 +1690,9 @@ def build_progression_report_workbook(
 
     style_report_sheet(sheet)
 
-    risk_sheet = workbook.create_sheet("At-Risk Students")
+    risk_sheet = workbook.create_sheet("At-Risk Review")
     risk_sheet.merge_cells("A1:F1")
-    risk_sheet["A1"] = "At-Risk Students"
+    risk_sheet["A1"] = "At-Risk Learners for Review"
     risk_headers = ["LRN", "Student Name", "Last Grade Seen", "Last School Year", "Reason", "Remarks"]
     for column, header in enumerate(risk_headers, start=1):
         risk_sheet.cell(row=5, column=column, value=header)
@@ -2298,21 +2306,48 @@ def find_sf1_columns(df):
     if not required.issubset(columns):
         return None
 
-    columns["data_start_row"] = header_row + 2
+    next_row_index = header_row + 1
+    data_start_row = header_row + 2
+
+    if next_row_index < len(df):
+        next_lrn = str(df.iloc[next_row_index, columns["lrn"]]).strip()
+        next_lrn = re.sub(r"\.0$", "", next_lrn)
+        if LRN_PATTERN.match(next_lrn):
+            data_start_row = next_row_index
+
+    columns["data_start_row"] = data_start_row
     return columns
 
 
 @app.route("/upload", methods=["POST"])
 @admin_required
 def upload():
+    pending_file = None
+    pending_path = None
     try:
         ensure_schema()
 
-        file = request.files["file"]
+        confirm_mismatch = request.form.get("confirm_metadata_mismatch") == "1"
+        pending_token = request.form.get("pending_upload_token", "").strip()
+        pending = None
+        file = None
+
+        if confirm_mismatch and pending_token:
+            pending = pop_pending_upload(pending_token)
+            if not pending:
+                flash("The pending upload expired. Please select the file and upload again.", "upload_error")
+                return redirect(url_for("lis_upload"))
+
+            pending_path = pending["path"]
+            pending_file = StoredUpload(pending_path, pending["filename"])
+            file = pending_file
+        else:
+            file = request.files.get("file")
+
         school_year = request.form.get("school_year", "").strip()
         grade_level = request.form.get("grade_level")
 
-        if not file:
+        if not file or not file.filename:
             flash("No file uploaded.", "upload_error")
             return redirect(url_for("lis_upload"))
 
@@ -2325,7 +2360,28 @@ def upload():
             return redirect(url_for("lis_upload"))
 
         grade_level = int(grade_level)
-        df = pd.read_excel(file, header=None)
+
+        try:
+            df = read_lis_upload(file)
+        except ValueError as e:
+            flash(str(e), "upload_error")
+            return redirect(url_for("lis_upload"))
+
+        detected_metadata = detect_upload_metadata(df)
+        metadata_mismatches = get_upload_metadata_mismatches(detected_metadata, school_year, grade_level)
+        if metadata_mismatches and not confirm_mismatch:
+            pending_token = save_pending_upload(file)
+            return render_template(
+                "lis_upload.html",
+                grades=SUPPORTED_GRADES,
+                pending_upload={
+                    "token": pending_token,
+                    "filename": file.filename,
+                    "school_year": school_year,
+                    "grade_level": grade_level,
+                    "mismatches": metadata_mismatches,
+                },
+            )
 
         columns = find_sf1_columns(df)
 
@@ -2333,7 +2389,7 @@ def upload():
         print(df.head())
 
         if columns is None:
-            flash("Column detection failed. Check the Excel format and make sure LRN, Name, and Sex columns are present.", "upload_error")
+            flash("Column detection failed. Check the LIS/SF1 file and make sure LRN, Name, and Sex columns are present.", "upload_error")
             return redirect(url_for("lis_upload"))
 
         print("LRN COL:", columns["lrn"])
@@ -2360,6 +2416,10 @@ def upload():
         df = df[df["LRN"].str.match(LRN_PATTERN)]
         df = df[df["NAME"].notna()]
         df = df[df["NAME"].astype(str).str.strip() != ""]
+
+        if df.empty:
+            flash("No valid student rows found. Check that the file contains 12-digit LRNs and student names.", "upload_error")
+            return redirect(url_for("lis_upload"))
 
         print("\n===== CLEAN DATA =====")
         print(df.head(10))
@@ -2414,6 +2474,14 @@ def upload():
         print("\nERROR:", str(e))
         flash(f"Upload failed: {str(e)}", "upload_error")
         return redirect(url_for("lis_upload"))
+    finally:
+        if pending_file:
+            pending_file.close()
+        if pending_path:
+            try:
+                os.remove(pending_path)
+            except OSError:
+                pass
 
 
 def get_db_connection():

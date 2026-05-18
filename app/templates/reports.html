@@ -25,40 +25,41 @@
 
   <main class="main-content">
     <div class="topbar">
-      <div><h3>Reports</h3><span>Generate a simple progression summary for review and printing.</span></div>
+      <div><h3>Progression Reports</h3><span>School-level summaries based on uploaded LIS/SF1 records.</span></div>
       <div class="topbar-right"><div class="profile-box">{{ current_user or 'Admin' }}</div></div>
     </div>
 
     <section class="panel mb-4">
       <form class="reports-header" method="get" action="/reports">
         <div>
-          <h5>Report Setup</h5>
-          <span>Filter by school year, then export a formatted Excel summary.</span>
+          <h5>Output Scope</h5>
+          <span>Choose the school year included in exported and printed record lists.</span>
         </div>
         <div class="report-actions">
           <input class="form-control" type="text" name="school_year" value="{{ selected_year }}" placeholder="All years or 2025-2026" pattern="[0-9]{4}-[0-9]{4}" title="Use consecutive years in YYYY-YYYY format, for example 2025-2026">
-          <button class="btn custom-btn" type="submit">Generate</button>
+          <button class="btn custom-btn" type="submit">Apply Filter</button>
           <a class="btn btn-outline-primary" href="/reports/export{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Export Excel</a>
           <a class="btn btn-outline-primary" href="/reports/print{% if selected_year %}?school_year={{ selected_year }}{% endif %}" target="_blank">Print / Save PDF</a>
         </div>
       </form>
+      <p class="report-scope-note mb-0">Progression indicators and at-risk review use all uploaded Grade 7 to Grade 10 records. The school-year field only scopes the detailed records included in exported or printed outputs.</p>
     </section>
 
     <section class="panel mb-4">
       <div class="report-preview-header">
-        <div><h5>Computed Rates</h5><span class="text-muted">Current values are based on uploaded student records.</span></div>
+        <div><h5>System-Wide Progression Indicators</h5><span class="text-muted">Computed from all uploaded Grade 7 to Grade 10 records.</span></div>
       </div>
-      <div class="formula-list">
-        <div><strong>Cohort Survival Rate</strong><span>{{ stats.cohort_survival_rate }}%</span></div>
-        <div><strong>Completion Rate</strong><span>{{ stats.completion_rate }}%</span></div>
-        <div><strong>Retention Rate</strong><span>{{ stats.retention_rate }}%</span></div>
-        <div><strong>Repetition Rate</strong><span>{{ stats.repetition_rate }}%</span></div>
+      <div class="indicator-grid">
+        <div><strong>Cohort Survival Rate</strong><span>{{ stats.cohort_survival_rate }}%</span><small>Grade 10 learners compared with Grade 7 baseline records.</small></div>
+        <div><strong>Completion Rate</strong><span>{{ stats.completion_rate }}%</span><small>Tracked learners with Grade 10 records.</small></div>
+        <div><strong>Retention Rate</strong><span>{{ stats.retention_rate }}%</span><small>Records retained after transfer-out cases are excluded.</small></div>
+        <div><strong>Repetition Rate</strong><span>{{ stats.repetition_rate }}%</span><small>Learners appearing in the same grade across different school years.</small></div>
       </div>
     </section>
 
     <section class="panel mb-4">
       <div class="report-preview-header">
-        <div><h5>CSR Leaving-Point Breakdown</h5><span class="text-muted">Shows where learners leave the progression path.</span></div>
+        <div><h5>Cohort Survival Leaving-Point Breakdown</h5><span class="text-muted">Shows where learners stopped appearing in the Grade 7 to Grade 10 path.</span></div>
       </div>
       <div class="table-responsive mt-3">
         <table class="table custom-table align-middle">
@@ -80,7 +81,7 @@
 
     <section class="panel mb-4">
       <div class="report-preview-header">
-        <div><h5>At-Risk Students</h5><span class="text-muted">Learners who transferred out or stopped appearing before Grade 10.</span></div>
+        <div><h5>At-Risk Learners for Review</h5><span class="text-muted">Learners who transferred out, need verification, or stopped appearing before Grade 10.</span></div>
       </div>
       <div class="table-responsive mt-3">
         <table class="table custom-table align-middle">
@@ -105,16 +106,15 @@
 
     <section class="panel mt-4">
       <div class="report-preview-header">
-        <div><h5>Report Preview</h5><span class="text-muted">Live system summary for administrative review.</span></div>
-        <span class="badge bg-primary">Preview Mode</span>
+        <div><h5>Uploaded Record Summary</h5><span class="text-muted">Counts reflect all records currently stored in the system.</span></div>
       </div>
 
       <div class="report-document">
         <div class="report-title">
           <h4>Alubijid National Comprehensive High School</h4>
           <p>Integrated LRN-Based Student Progression Tracking System</p>
-          <h5>Progression Summary</h5>
-          <span>Based on uploaded LIS records</span>
+          <h5>School-Level Progression Summary</h5>
+          <span>All Uploaded School Years</span>
         </div>
 
         <div class="summary-boxes">

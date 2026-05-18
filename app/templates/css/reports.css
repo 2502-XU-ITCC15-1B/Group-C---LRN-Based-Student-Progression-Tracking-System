@@ -33,6 +33,13 @@
   font-size: 12px;
 }
 
+.report-scope-note {
+  color: #5d6f91;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+
 .form-label {
   color: #12376f;
   font-weight: 600;
@@ -72,27 +79,37 @@
   min-height: 42px;
 }
 
-.formula-list {
+.indicator-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
-.formula-list div {
+.indicator-grid div {
   background: #eef4ff;
   border-radius: 12px;
   padding: 12px;
 }
 
-.formula-list strong {
+.indicator-grid strong {
   display: block;
   color: #12376f;
   margin-bottom: 4px;
 }
 
-.formula-list span {
+.indicator-grid span {
+  display: block;
+  color: #0067b1;
+  font-size: 17px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.indicator-grid small {
   color: #5d6f91;
+  display: block;
   font-size: 11px;
+  line-height: 1.35;
 }
 
 .report-document {
@@ -162,7 +179,7 @@
 @media(max-width: 1200px) {
   .report-card-grid,
   .summary-boxes,
-  .formula-list {
+  .indicator-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -183,7 +200,7 @@
 @media(max-width: 576px) {
   .report-card-grid,
   .summary-boxes,
-  .formula-list {
+  .indicator-grid {
     grid-template-columns: 1fr;
   }
 }
