@@ -8,15 +8,15 @@ The system imports LIS/SF1 Excel exports, centralizes student records, tracks co
 
 This system is intended for school-level use by the department head or authorized school personnel. It supports:
 
-- Uploading and processing LIS/SF1 Excel exports
+- Uploading and processing LIS/SF1 Excel or CSV exports
 - Centralized LRN-based student record management
 - Grade 7 to Grade 10 progression tracking
 - Transfer-in, pending transfer-in, and transfer-out monitoring
-- At-risk student identification
-- Cohort survival, completion, and repetition calculations
+- Learners-for-review identification
+- Cohort completion, irregular completion, and repeater tracking
 - Excel report generation
 - Print-friendly reports for PDF saving
-- Login, logout, password hashing, access control, and password change
+- Login, logout, password hashing, access control, user management, password change, and session timeout
 
 ## Limitations
 
@@ -52,8 +52,12 @@ It only processes uploaded LIS/SF1 files provided by authorized school personnel
 - Logout confirmation page
 - Password hashing using Werkzeug
 - Change password page
+- Admin password reset for other users
+- Admin and Viewer roles
+- User activation, deactivation, and deletion
+- 20-minute inactivity timeout
 - Session-based route protection
-- Admin-only actions for upload and deletion
+- Admin-only actions for upload, edits, deletion, and user management
 
 Default local test account:
 
@@ -70,6 +74,10 @@ The upload module accepts `.xls`, `.xlsx`, and `.csv` exports. During import, th
 
 - Detects SF1/LIS columns for LRN, name, sex, and remarks
 - Validates 12-digit LRNs
+- Rejects duplicate LRNs within the same uploaded file
+- Warns users before continuing when rows contain missing LRN, name, sex, or invalid LRN values
+- Limits uploads to 50 MB
+- Checks school year and grade level metadata against the selected form values
 - Stores records by school year and grade level
 - Detects duplicate year/grade records
 - Detects transfer-related remarks such as `T/I`, `Pending TI`, and `T/O`
@@ -97,7 +105,7 @@ The cohort tracking and reports module includes:
 - Grade 7 to Grade 10 full cohort tracking
 - Grade 8 to Grade 10 later-entry tracking for transferees
 - Cohort status summary and per-student progression table
-- On-time completion, overall completion, delayed/repeated, transfer-out, and for-review indicators for the selected entry cohort
+- Completed, completed-irregular, repeater, transfer-out, and for-review indicators for the selected entry cohort
 - Excel export
 - Print-friendly report page for browser printing or saving as PDF
 
@@ -106,8 +114,8 @@ The cohort tracking and reports module includes:
 The system computes selected-cohort indicators inside Cohort Tracking & Reports:
 
 - **On-Time Completion Rate**: learners who reached Grade 10 on the expected year
-- **Overall Completion Rate**: learners who reached Grade 10 even if delayed
-- **For Review / Irregular Count**: learners with transfer, repeated, delayed, or incomplete records
+- **Overall Completion Rate**: learners who reached Grade 10, including those with irregular progression records
+- **For Review / Irregular Count**: learners with transfer, repeater, completed-irregular, missing, or incomplete records
 
 ## Project Structure
 
@@ -115,6 +123,7 @@ The system computes selected-cohort indicators inside Cohort Tracking & Reports:
 .
 +-- app/
 |   +-- app.py                  # Main Flask application
+|   +-- backend/                # Backend services, validators, formatters, and DB helpers
 |   +-- Dockerfile              # Flask/Gunicorn image
 |   +-- requirements.txt        # Python dependencies
 |   +-- rsc/                    # Static resources such as school logo
@@ -170,14 +179,14 @@ admin / admin123
 | Page | URL | Purpose |
 | --- | --- | --- |
 | Login | `/login` | Sign in to the system |
-| Dashboard | `/dashboard` | View totals, rates, distribution, and recent changes |
+| Dashboard | `/dashboard` | View totals, uploaded record distribution, latest activities, and quick actions |
 | LIS Upload | `/lis-upload` | Upload LIS/SF1 files and manage imported batches |
 | Students | `/students` | Browse, filter, and open student records |
 | Student History | `/student/<lrn>` | View progression history and edit status/remarks |
-| Cohort Tracking | `/cohort-tracking` | Track a cohort from a selected grade and school year |
 | Cohort Tracking & Reports | `/cohort-tracking` | Track cohorts and export/print reports |
 | Print Report | `/reports/print` | Print or save the selected cohort report as PDF |
-| Change Password | `/change-password` | Update the current admin password |
+| Change Password | `/change-password` | Update the current user's own password |
+| User Management | `/users` | Admin-only user account management |
 | Logout | `/logout` | Confirm and end the session |
 
 ## Upload Workflow
@@ -287,13 +296,19 @@ Before demo or deployment, verify:
 
 - Login works with the admin account
 - Wrong password shows an error
+- Inactive or deleted users cannot log in
+- Admin can add, activate/deactivate, delete, and reset passwords for other users
+- Viewer accounts cannot access admin-only upload, edit, delete, or user-management actions
+- Session expires after 20 minutes of inactivity
 - Logout confirmation appears
 - Change password works, then log in again
 - LIS upload accepts the client sample files
+- LIS upload rejects duplicate LRNs within the same file
+- LIS upload warns before continuing when required row data is missing or invalid
 - Student records appear in `/students`
 - Student history shows Grade 7 to Grade 10 movement
 - Manual status/remarks edits create change-log entries
-- Cohort tracking shows expected completed, transfer, repeated, and incomplete students
+- Cohort tracking shows expected completed, completed-irregular, transfer, repeater, and incomplete students
 - Cohort Tracking & Reports shows entry cohorts, review flags, print output, and Excel export
 - Excel export downloads successfully
 - Print report opens and can be saved as PDF

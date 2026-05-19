@@ -63,15 +63,15 @@ body{
 .logo-text h5{
     margin:0;
     font-weight:800;
-    font-size:14px;
-    white-space:nowrap;
+    font-size:12px;
+    line-height:1.2;
     color:white;
 }
 
 .logo-text span{
     font-size:10px;
     color:#9fb7df;
-    white-space:nowrap;
+    line-height:1.2;
 }
 
 .nav-group{

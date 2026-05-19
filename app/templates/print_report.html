@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Print Report | LRN Tracking System</title>
+  <title>Print Report | Integrated LRN-Based Student Progression Tracking System</title>
   <style>
     * {
       box-sizing: border-box;
@@ -217,7 +217,7 @@
       <div class="rate-grid">
         <div><span>On-Time Completion Rate</span><strong>{{ report.rates.on_time_completion }}%</strong></div>
         <div><span>Overall Completion Rate</span><strong>{{ report.rates.overall_completion }}%</strong></div>
-        <div><span>Delayed / Repeated</span><strong>{{ report.summary.delayed }}</strong></div>
+        <div><span>Irregular / Repeater</span><strong>{{ report.summary.delayed }}</strong></div>
         <div><span>Transfer-Out</span><strong>{{ report.summary.transfer_out }}</strong></div>
       </div>
     </section>
@@ -225,7 +225,7 @@
     <section>
       <h3>Progression Review Breakdown</h3>
       <table>
-        <thead><tr><th>Grade Level</th><th>Transferred Out</th><th>Delayed / Repeated</th><th>Missing / Incomplete</th><th>Total for Review</th></tr></thead>
+        <thead><tr><th>Grade Level</th><th>Transferred Out</th><th>Irregular / Repeater</th><th>Missing / Incomplete</th><th>Total for Review</th></tr></thead>
         <tbody>
           {% for item in report.breakdown %}
           <tr>

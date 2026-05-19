@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management | Integrated LRN-Based Student Progression Tracking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/templates/css/dashboard.css">
+  <style>
+    .form-label {
+      color: #12376f;
+      font-weight: 600;
+    }
+
+    .form-control,
+    .form-select {
+      border: 1px solid #c9d6ea;
+      border-radius: 10px;
+      color: #12376f;
+      font-size: 12px;
+      padding: 8px;
+    }
+
+    .form-control::placeholder {
+      color: #7f91ad;
+      opacity: 1;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #0067b1;
+      box-shadow: 0 0 0 0.2rem rgba(0, 103, 177, 0.15);
+    }
+
+    .modal-content {
+      border: 1px solid rgba(18, 55, 111, 0.16);
+      border-radius: 12px;
+      box-shadow: 0 18px 42px rgba(3, 18, 42, 0.24);
+      color: #12376f;
+      font-size: 12px;
+    }
+
+    .modal-header {
+      background: #ffffff;
+      border-bottom: 1px solid #d9e7fb;
+    }
+
+    .modal-title {
+      color: #12376f;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .modal-body {
+      color: #12376f;
+    }
+
+    .modal-body p {
+      color: #5d6f91;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .modal-footer {
+      border-top: 1px solid #d9e7fb;
+    }
+
+    .btn-close {
+      opacity: 0.72;
+    }
+
+    .delete-note {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 10px;
+      color: #9f1239;
+      font-size: 12px;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="logo-section">
+      <img src="/rsc/schoolLogo.png" alt="Logo">
+      <div class="logo-text"><h5>Integrated LRN-Based</h5><span>Student Progression Tracking System</span></div>
+    </div>
+    <div class="nav-group"><p>MAIN</p><a href="/dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
+    <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/cohort-tracking"><i class="bi bi-file-earmark-text-fill"></i>Cohort Tracking & Reports</a></div>
+    <div class="nav-group"><p>ACCOUNT</p><a href="/change-password"><i class="bi bi-key-fill"></i>Change Password</a>{% if current_role == 'admin' %}<a href="/users" class="active"><i class="bi bi-person-gear"></i>Users</a>{% endif %}<a href="/logout"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="topbar">
+      <div><h3>User Management</h3><span>Manage access for authorized school personnel.</span></div>
+      <div class="topbar-right"><div class="profile-box">{{ current_user or 'Admin' }}</div></div>
+    </div>
+
+    <section class="dashboard-grid">
+      <div class="left-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h5>User Accounts</h5>
+            <span class="text-muted">Admin users can manage accounts.</span>
+          </div>
+
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              <div class="alert alert-info py-2" role="alert">{{ messages[0] }}</div>
+            {% endif %}
+          {% endwith %}
+
+          <div class="table-responsive">
+            <table class="table custom-table align-middle">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                <tr>
+                  <td><strong>{{ user.username }}</strong>{% if user.id == session.user_id %} <span class="badge bg-primary">You</span>{% endif %}</td>
+                  <td>{{ user.role|title }}</td>
+                  <td><span class="badge {{ 'bg-success' if user.is_active else 'bg-secondary' }}">{{ 'Active' if user.is_active else 'Inactive' }}</span></td>
+                  <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '' }}</td>
+                  <td>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#editUser{{ user.id }}">Edit</button>
+                      {% if user.id != session.user_id %}<button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#resetPassword{{ user.id }}">Reset Password</button>{% endif %}
+                      {% if user.id != session.user_id %}<button class="btn btn-sm btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteUser{{ user.id }}">Delete</button>{% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="panel">
+          <div class="panel-header"><h5>Add User</h5></div>
+          <form method="POST" action="/users">
+            <input type="hidden" name="action" value="add">
+            <div class="mb-3">
+              <label class="form-label">Username</label>
+              <input class="form-control" type="text" name="username" placeholder="Enter username" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <select class="form-select" name="role" required>
+                <option value="viewer">Viewer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Temporary Password</label>
+              <input class="form-control" type="password" name="password" placeholder="At least 8 characters" minlength="8" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm Password</label>
+              <input class="form-control" type="password" name="confirm_password" placeholder="Re-enter password" minlength="8" required>
+            </div>
+            <button class="btn custom-btn w-100" type="submit"><i class="bi bi-person-plus-fill"></i>Add User</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h5>Password Recovery</h5></div>
+          <div class="tracking-guide">
+            <div><i class="bi bi-shield-lock"></i><span>Forgotten passwords are reset by an admin for other users, not by email.</span></div>
+            <div><i class="bi bi-person-lock"></i><span>Use Change Password to update your own account password.</span></div>
+            <div><i class="bi bi-key"></i><span>Give the user a temporary password and ask them to change it after logging in.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+{% for user in users %}
+<div class="modal fade" id="editUser{{ user.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="/users">
+      <input type="hidden" name="action" value="update">
+      <input type="hidden" name="user_id" value="{{ user.id }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit {{ user.username }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Role</label>
+          <select class="form-select" name="role">
+            <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>Viewer</option>
+            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+          </select>
+        </div>
+        <div class="form-check">
+          <input type="hidden" name="is_active" value="0">
+          <input class="form-check-input" type="checkbox" name="is_active" value="1" id="active{{ user.id }}" {% if user.is_active %}checked{% endif %}>
+          <label class="form-check-label" for="active{{ user.id }}">Active account</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn custom-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if user.id != session.user_id %}<div class="modal fade" id="resetPassword{{ user.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="/users">
+      <input type="hidden" name="action" value="reset_password">
+      <input type="hidden" name="user_id" value="{{ user.id }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Reset Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Set a temporary password for {{ user.username }}.</p>
+        <div class="mb-3">
+          <label class="form-label">Temporary Password</label>
+          <input class="form-control" type="password" name="new_password" placeholder="At least 8 characters" minlength="8" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Confirm Temporary Password</label>
+          <input class="form-control" type="password" name="confirm_password" placeholder="Re-enter temporary password" minlength="8" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn custom-btn">Reset Password</button>
+      </div>
+    </form>
+  </div>
+</div>{% endif %}
+
+<div class="modal fade" id="deleteUser{{ user.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="/users">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="user_id" value="{{ user.id }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Delete the account for <strong>{{ user.username }}</strong>?</p>
+        <div class="delete-note">
+          Once deleted, this user can no longer log in to the system. This action cannot be undone.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Delete User</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</body>
+</html>

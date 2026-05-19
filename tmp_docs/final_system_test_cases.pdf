@@ -1,0 +1,310 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 1004 >>
+stream
+BT /F2 16 Tf 54 742 Td (Final System Testing Test Cases) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (Project) Tj ET
+BT /F1 10 Tf 136 692 Td (Integrated LRN-Based Student Progression Tracking System) Tj ET
+BT /F2 10 Tf 54 673 Td (Purpose) Tj ET
+BT /F1 10 Tf 136 673 Td (This document lists the final test cases to verify the main functions, security) Tj ET
+BT /F1 10 Tf 136 658 Td (controls, upload validation, records management, cohort tracking, reports, dashboard,) Tj ET
+BT /F1 10 Tf 136 643 Td (and user management features.) Tj ET
+BT /F2 10 Tf 54 624 Td (Tester) Tj ET
+BT /F1 10 Tf 136 624 Td (______________________________) Tj ET
+BT /F2 10 Tf 54 605 Td (Date Tested) Tj ET
+BT /F1 10 Tf 136 605 Td (______________________________) Tj ET
+BT /F2 10 Tf 54 586 Td (Legend) Tj ET
+BT /F1 10 Tf 136 586 Td (Result may be marked as Passed, Failed, or Needs Fix.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 1 of 9) Tj ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 1588 >>
+stream
+BT /F2 16 Tf 54 742 Td (1. Authentication and Session Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-AUTH-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Login using valid admin credentials. Expected: user is redirected to dashboard.) Tj ET
+BT /F2 10 Tf 54 673 Td (TC-AUTH-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Login using wrong password. Expected: system shows invalid username or password.) Tj ET
+BT /F2 10 Tf 54 654 Td (TC-AUTH-003) Tj ET
+BT /F1 10 Tf 136 654 Td (Login using inactive account. Expected: account cannot access the system.) Tj ET
+BT /F2 10 Tf 54 635 Td (TC-AUTH-004) Tj ET
+BT /F1 10 Tf 136 635 Td (Logout from the system. Expected: session is cleared and user returns to login page.) Tj ET
+BT /F2 10 Tf 54 616 Td (TC-AUTH-005) Tj ET
+BT /F1 10 Tf 136 616 Td (Open protected page without logging in. Expected: redirected to login page.) Tj ET
+BT /F2 10 Tf 54 597 Td (TC-AUTH-006) Tj ET
+BT /F1 10 Tf 136 597 Td (Stay inactive for more than 20 minutes. Expected: user must login again.) Tj ET
+BT /F2 10 Tf 54 578 Td (TC-AUTH-007) Tj ET
+BT /F1 10 Tf 136 578 Td (Restart Docker/app and refresh page. Expected: user must login again.) Tj ET
+BT /F2 10 Tf 54 559 Td (TC-AUTH-008) Tj ET
+BT /F1 10 Tf 136 559 Td (Change password with correct current password. Expected: password is updated.) Tj ET
+BT /F2 10 Tf 54 540 Td (TC-AUTH-009) Tj ET
+BT /F1 10 Tf 136 540 Td (Change password using wrong current password. Expected: change is rejected.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 2 of 9) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 1686 >>
+stream
+BT /F2 16 Tf 54 742 Td (2. User Management Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-USER-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Admin opens Users page. Expected: user list is displayed.) Tj ET
+BT /F2 10 Tf 54 673 Td (TC-USER-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Admin adds a Viewer account with valid password. Expected: user is created.) Tj ET
+BT /F2 10 Tf 54 654 Td (TC-USER-003) Tj ET
+BT /F1 10 Tf 136 654 Td (Admin adds a user with duplicate username. Expected: system rejects duplicate.) Tj ET
+BT /F2 10 Tf 54 635 Td (TC-USER-004) Tj ET
+BT /F1 10 Tf 136 635 Td (Admin adds password shorter than 8 characters. Expected: system rejects password.) Tj ET
+BT /F2 10 Tf 54 616 Td (TC-USER-005) Tj ET
+BT /F1 10 Tf 136 616 Td (Admin edits user role from Viewer to Admin. Expected: role is updated.) Tj ET
+BT /F2 10 Tf 54 597 Td (TC-USER-006) Tj ET
+BT /F1 10 Tf 136 597 Td (Admin marks a user inactive. Expected: inactive user cannot login.) Tj ET
+BT /F2 10 Tf 54 578 Td (TC-USER-007) Tj ET
+BT /F1 10 Tf 136 578 Td (Admin resets user password. Expected: user can login using new password.) Tj ET
+BT /F2 10 Tf 54 559 Td (TC-USER-008) Tj ET
+BT /F1 10 Tf 136 559 Td (Admin deletes another user. Expected: deleted user can no longer login.) Tj ET
+BT /F2 10 Tf 54 540 Td (TC-USER-009) Tj ET
+BT /F1 10 Tf 136 540 Td (Admin attempts to delete own account. Expected: delete action is not allowed.) Tj ET
+BT /F2 10 Tf 54 521 Td (TC-USER-010) Tj ET
+BT /F1 10 Tf 136 521 Td (Try to remove the last active admin. Expected: system prevents action.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 3 of 9) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 1768 >>
+stream
+BT /F2 16 Tf 54 742 Td (3. LIS/SF1 Upload Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-UPL-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Upload valid .xlsx LIS/SF1 file. Expected: records are imported successfully.) Tj ET
+BT /F2 10 Tf 54 673 Td (TC-UPL-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Upload valid .csv LIS/SF1 file. Expected: records are imported successfully.) Tj ET
+BT /F2 10 Tf 54 654 Td (TC-UPL-003) Tj ET
+BT /F1 10 Tf 136 654 Td (Upload unsupported file type such as .pdf. Expected: system rejects file.) Tj ET
+BT /F2 10 Tf 54 635 Td (TC-UPL-004) Tj ET
+BT /F1 10 Tf 136 635 Td (Upload file larger than 50 MB. Expected: system shows file too large message.) Tj ET
+BT /F2 10 Tf 54 616 Td (TC-UPL-005) Tj ET
+BT /F1 10 Tf 136 616 Td (Upload file missing LRN column. Expected: column detection error appears.) Tj ET
+BT /F2 10 Tf 54 597 Td (TC-UPL-006) Tj ET
+BT /F1 10 Tf 136 597 Td (Upload file missing Name column. Expected: column detection error appears.) Tj ET
+BT /F2 10 Tf 54 578 Td (TC-UPL-007) Tj ET
+BT /F1 10 Tf 136 578 Td (Upload file missing Sex column. Expected: column detection error appears.) Tj ET
+BT /F2 10 Tf 54 559 Td (TC-UPL-008) Tj ET
+BT /F1 10 Tf 136 559 Td (Upload file with invalid LRN values. Expected: invalid rows are skipped or no valid) Tj ET
+BT /F1 10 Tf 136 544 Td (rows message appears.) Tj ET
+BT /F2 10 Tf 54 525 Td (TC-UPL-009) Tj ET
+BT /F1 10 Tf 136 525 Td (Use invalid school year format 2025/2026. Expected: upload is rejected.) Tj ET
+BT /F2 10 Tf 54 506 Td (TC-UPL-010) Tj ET
+BT /F1 10 Tf 136 506 Td (Use illogical school year 2025-2027 or 2027-2025. Expected: upload is rejected.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 4 of 9) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 1294 >>
+stream
+BT /F2 16 Tf 54 742 Td (4. Upload Metadata and Confirmation Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-META-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Upload file where file school year matches selected school year. Expected: import) Tj ET
+BT /F1 10 Tf 136 677 Td (proceeds normally.) Tj ET
+BT /F2 10 Tf 54 658 Td (TC-META-002) Tj ET
+BT /F1 10 Tf 136 658 Td (Upload file where file school year differs from selected school year. Expected:) Tj ET
+BT /F1 10 Tf 136 643 Td (warning appears.) Tj ET
+BT /F2 10 Tf 54 624 Td (TC-META-003) Tj ET
+BT /F1 10 Tf 136 624 Td (Upload file where file grade level differs from selected grade. Expected: warning) Tj ET
+BT /F1 10 Tf 136 609 Td (appears.) Tj ET
+BT /F2 10 Tf 54 590 Td (TC-META-004) Tj ET
+BT /F1 10 Tf 136 590 Td (Proceed after mismatch warning. Expected: selected form school year/grade is recorded.) Tj ET
+BT /F2 10 Tf 54 571 Td (TC-META-005) Tj ET
+BT /F1 10 Tf 136 571 Td (Cancel after mismatch warning. Expected: import is cancelled.) Tj ET
+BT /F2 10 Tf 54 552 Td (TC-META-006) Tj ET
+BT /F1 10 Tf 136 552 Td (Let pending upload expire before confirming. Expected: system asks to upload again.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 5 of 9) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 1786 >>
+stream
+BT /F2 16 Tf 54 742 Td (5. Student Records and History Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-STU-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Search student by LRN. Expected: matching student record appears.) Tj ET
+BT /F2 10 Tf 54 673 Td (TC-STU-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Search student by name. Expected: matching student record appears.) Tj ET
+BT /F2 10 Tf 54 654 Td (TC-STU-003) Tj ET
+BT /F1 10 Tf 136 654 Td (Filter records by grade level. Expected: only selected grade appears.) Tj ET
+BT /F2 10 Tf 54 635 Td (TC-STU-004) Tj ET
+BT /F1 10 Tf 136 635 Td (Filter records by school year. Expected: only selected school year appears.) Tj ET
+BT /F2 10 Tf 54 616 Td (TC-STU-005) Tj ET
+BT /F1 10 Tf 136 616 Td (Admin adds a new student manually. Expected: student is saved.) Tj ET
+BT /F2 10 Tf 54 597 Td (TC-STU-006) Tj ET
+BT /F1 10 Tf 136 597 Td (Admin adds year record to existing student. Expected: history is updated.) Tj ET
+BT /F2 10 Tf 54 578 Td (TC-STU-007) Tj ET
+BT /F1 10 Tf 136 578 Td (Admin edits record status/remarks. Expected: update is saved and logged.) Tj ET
+BT /F2 10 Tf 54 559 Td (TC-STU-008) Tj ET
+BT /F1 10 Tf 136 559 Td (Viewer opens student history. Expected: viewer can view but cannot edit/delete.) Tj ET
+BT /F2 10 Tf 54 540 Td (TC-STU-009) Tj ET
+BT /F1 10 Tf 136 540 Td (Admin deletes a student after confirmation. Expected: student and related records are) Tj ET
+BT /F1 10 Tf 136 525 Td (removed.) Tj ET
+BT /F2 10 Tf 54 506 Td (TC-STU-010) Tj ET
+BT /F1 10 Tf 136 506 Td (Check change log after edits. Expected: changed field, old value, new value, and user) Tj ET
+BT /F1 10 Tf 136 491 Td (are shown.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 6 of 9) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 1852 >>
+stream
+BT /F2 16 Tf 54 742 Td (6. Cohort Tracking and Reports Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-COH-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Track Grade 7 cohort for selected school year. Expected: system shows expected Grade 7) Tj ET
+BT /F1 10 Tf 136 677 Td (to Grade 10 path.) Tj ET
+BT /F2 10 Tf 54 658 Td (TC-COH-002) Tj ET
+BT /F1 10 Tf 136 658 Td (Track Grade 8 entry cohort. Expected: system supports later-entry/transferee tracking.) Tj ET
+BT /F2 10 Tf 54 639 Td (TC-COH-003) Tj ET
+BT /F1 10 Tf 136 639 Td (Student progresses yearly without missing records. Expected: marked Regular.) Tj ET
+BT /F2 10 Tf 54 620 Td (TC-COH-004) Tj ET
+BT /F1 10 Tf 136 620 Td (Student has repeated grade level. Expected: marked for review/irregular.) Tj ET
+BT /F2 10 Tf 54 601 Td (TC-COH-005) Tj ET
+BT /F1 10 Tf 136 601 Td (Student has missing year record. Expected: marked missing or for review.) Tj ET
+BT /F2 10 Tf 54 582 Td (TC-COH-006) Tj ET
+BT /F1 10 Tf 136 582 Td (Student has missing records but reached Grade 10. Expected: Completed - Delayed.) Tj ET
+BT /F2 10 Tf 54 563 Td (TC-COH-007) Tj ET
+BT /F1 10 Tf 136 563 Td (Student has Transfer-Out status. Expected: transfer status is reflected.) Tj ET
+BT /F2 10 Tf 54 544 Td (TC-COH-008) Tj ET
+BT /F1 10 Tf 136 544 Td (Student has Transfer-In/Pending Transfer-In status. Expected: status is reflected.) Tj ET
+BT /F2 10 Tf 54 525 Td (TC-COH-009) Tj ET
+BT /F1 10 Tf 136 525 Td (Print progression summary report. Expected: printable report opens with selected) Tj ET
+BT /F1 10 Tf 136 510 Td (cohort.) Tj ET
+BT /F2 10 Tf 54 491 Td (TC-COH-010) Tj ET
+BT /F1 10 Tf 136 491 Td (Export progression report to Excel. Expected: Excel file downloads with correct data.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 7 of 9) Tj ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 1490 >>
+stream
+BT /F2 16 Tf 54 742 Td (7. Dashboard and UI Testing) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (TC-DASH-001) Tj ET
+BT /F1 10 Tf 136 692 Td (Open dashboard after login. Expected: dashboard loads without errors.) Tj ET
+BT /F2 10 Tf 54 673 Td (TC-DASH-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Check summary cards. Expected: total students, transfer-in, transfer-out, and) Tj ET
+BT /F1 10 Tf 136 658 Td (repeaters display.) Tj ET
+BT /F2 10 Tf 54 639 Td (TC-DASH-003) Tj ET
+BT /F1 10 Tf 136 639 Td (Check uploaded records by grade level. Expected: counts match uploaded records.) Tj ET
+BT /F2 10 Tf 54 620 Td (TC-DASH-004) Tj ET
+BT /F1 10 Tf 136 620 Td (Check latest activities. Expected: recent edits/uploads appear.) Tj ET
+BT /F2 10 Tf 54 601 Td (TC-DASH-005) Tj ET
+BT /F1 10 Tf 136 601 Td (Click Quick Action: Upload LIS Data as admin. Expected: upload page opens.) Tj ET
+BT /F2 10 Tf 54 582 Td (TC-DASH-006) Tj ET
+BT /F1 10 Tf 136 582 Td (Click Quick Action: Track Cohort. Expected: cohort page opens.) Tj ET
+BT /F2 10 Tf 54 563 Td (TC-DASH-007) Tj ET
+BT /F1 10 Tf 136 563 Td (Check viewer dashboard. Expected: admin-only upload action is hidden.) Tj ET
+BT /F2 10 Tf 54 544 Td (TC-DASH-008) Tj ET
+BT /F1 10 Tf 136 544 Td (Check modal text color and placeholders. Expected: readable and consistent with system) Tj ET
+BT /F1 10 Tf 136 529 Td (branding.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 8 of 9) Tj ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 1427 >>
+stream
+BT /F2 16 Tf 54 742 Td (8. Final Acceptance Checklist) Tj ET
+BT /F1 9 Tf 54 716 Td (Result: Passed / Failed / Needs Fix    Remarks: ________________________________) Tj ET
+BT /F2 10 Tf 54 692 Td (AC-001) Tj ET
+BT /F1 10 Tf 136 692 Td (All core pages load without Internal Server Error.) Tj ET
+BT /F2 10 Tf 54 673 Td (AC-002) Tj ET
+BT /F1 10 Tf 136 673 Td (Admin and Viewer roles behave correctly.) Tj ET
+BT /F2 10 Tf 54 654 Td (AC-003) Tj ET
+BT /F1 10 Tf 136 654 Td (Invalid uploads are blocked with clear messages.) Tj ET
+BT /F2 10 Tf 54 635 Td (AC-004) Tj ET
+BT /F1 10 Tf 136 635 Td (Valid uploads create correct student records.) Tj ET
+BT /F2 10 Tf 54 616 Td (AC-005) Tj ET
+BT /F1 10 Tf 136 616 Td (Cohort tracking results match expected learner progression.) Tj ET
+BT /F2 10 Tf 54 597 Td (AC-006) Tj ET
+BT /F1 10 Tf 136 597 Td (Reports can be printed and exported.) Tj ET
+BT /F2 10 Tf 54 578 Td (AC-007) Tj ET
+BT /F1 10 Tf 136 578 Td (Deleted or inactive users cannot login.) Tj ET
+BT /F2 10 Tf 54 559 Td (AC-008) Tj ET
+BT /F1 10 Tf 136 559 Td (System logs out after inactivity and after app restart.) Tj ET
+BT /F2 10 Tf 54 540 Td (AC-009) Tj ET
+BT /F1 10 Tf 136 540 Td (Dashboard counts and latest activities are understandable.) Tj ET
+BT /F2 10 Tf 54 521 Td (AC-010) Tj ET
+BT /F1 10 Tf 136 521 Td (System is ready for project demonstration after all failed items are fixed.) Tj ET
+BT /F1 8 Tf 54 32 Td (Page 9 of 9) Tj ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Type /Pages /Kids [ 4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R ] /Count 9 >>
+endobj
+22 0 obj
+<< /Type /Catalog /Pages 21 0 R >>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000001210 00000 n 
+0000001347 00000 n 
+0000002987 00000 n 
+0000003124 00000 n 
+0000004862 00000 n 
+0000004999 00000 n 
+0000006819 00000 n 
+0000006957 00000 n 
+0000008304 00000 n 
+0000008443 00000 n 
+0000010282 00000 n 
+0000010421 00000 n 
+0000012326 00000 n 
+0000012465 00000 n 
+0000014008 00000 n 
+0000014147 00000 n 
+0000015627 00000 n 
+0000015766 00000 n 
+0000015880 00000 n 
+trailer
+<< /Size 23 /Root 22 0 R >>
+startxref
+15931
+%%EOF
