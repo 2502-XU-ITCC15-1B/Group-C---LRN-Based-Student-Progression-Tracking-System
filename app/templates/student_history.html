@@ -65,6 +65,20 @@
       text-align: center;
     }
 
+    .tracking-definition-note {
+      background: #eef4ff;
+      border: 1px solid #d9e7fb;
+      border-radius: 12px;
+      color: #5d6f91;
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 12px;
+    }
+
+    .tracking-definition-note strong {
+      color: #12376f;
+    }
+
     @media(max-width: 1000px) {
       .profile-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -92,8 +106,8 @@
     </div>
     <div class="nav-group"><p>MAIN</p><a href="/dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
     <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
-    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students" class="active"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
-    <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students" class="active"><i class="bi bi-people-fill"></i>Students</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/cohort-tracking"><i class="bi bi-file-earmark-text-fill"></i>Cohort Tracking & Reports</a></div>
     <div class="nav-group"><p>ACCOUNT</p><a href="/change-password"><i class="bi bi-key-fill"></i>Change Password</a><a href="/logout"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
   </aside>
 
@@ -145,9 +159,14 @@
       <div class="history-toolbar">
         <div>
           <h5>Progression Records</h5>
-          <span>Add one record per school year or edit existing status and remarks.</span>
+          <span>Record statuses describe the learner's uploaded status for a specific school year.</span>
         </div>
         <button class="btn custom-btn" type="button" data-bs-toggle="modal" data-bs-target="#addYearRecordModal">Add Year Record</button>
+      </div>
+      <div class="tracking-definition-note mb-3">
+        <strong>Record Statuses:</strong>
+        Enrolled, Transfer-In, Pending Transfer-In, and Transfer-Out come from uploaded records or remarks.
+        Progression results such as Completed, Repeated, and Incomplete are shown in Cohort Tracking after comparing LRNs across school years.
       </div>
       {% if history %}
       <div class="table-responsive">

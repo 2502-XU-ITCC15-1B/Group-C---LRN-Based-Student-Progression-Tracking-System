@@ -13,7 +13,7 @@ This system is intended for school-level use by the department head or authorize
 - Grade 7 to Grade 10 progression tracking
 - Transfer-in, pending transfer-in, and transfer-out monitoring
 - At-risk student identification
-- Cohort survival, completion, retention, and repetition calculations
+- Cohort survival, completion, and repetition calculations
 - Excel report generation
 - Print-friendly reports for PDF saving
 - Login, logout, password hashing, access control, and password change
@@ -89,34 +89,25 @@ Manual edits are traceable. The system logs old value, new value, school year, g
 
 ### Cohort Tracking
 
-The cohort tracking module follows students across Grade 7 to Grade 10 using LRN. It identifies:
+### Cohort Tracking & Reports
 
-- Straight-path students
-- Completed students
-- Repeated students
-- Transfer-ins
-- Transfer-outs
-- Missing or incomplete progression
-- Dropped or at-risk learners
+The cohort tracking and reports module includes:
 
-### Reports
-
-The reports module includes:
-
-- Computed progression rates
-- CSR leaving-point breakdown
-- At-risk students section
+- Entry cohort selection by starting school year and grade level
+- Grade 7 to Grade 10 full cohort tracking
+- Grade 8 to Grade 10 later-entry tracking for transferees
+- Cohort status summary and per-student progression table
+- On-time completion, overall completion, delayed/repeated, transfer-out, and for-review indicators for the selected entry cohort
 - Excel export
 - Print-friendly report page for browser printing or saving as PDF
 
 ## Computed Indicators
 
-The system computes:
+The system computes selected-cohort indicators inside Cohort Tracking & Reports:
 
-- **Cohort Survival Rate**: learners reaching Grade 10 compared with the Grade 7 baseline
-- **Completion Rate**: learners with Grade 10 records compared with tracked students
-- **Retention Rate**: learners retained in the system across records
-- **Repetition Rate**: learners appearing in the same grade across different years
+- **On-Time Completion Rate**: learners who reached Grade 10 on the expected year
+- **Overall Completion Rate**: learners who reached Grade 10 even if delayed
+- **For Review / Irregular Count**: learners with transfer, repeated, delayed, or incomplete records
 
 ## Project Structure
 
@@ -184,8 +175,8 @@ admin / admin123
 | Students | `/students` | Browse, filter, and open student records |
 | Student History | `/student/<lrn>` | View progression history and edit status/remarks |
 | Cohort Tracking | `/cohort-tracking` | Track a cohort from a selected grade and school year |
-| Reports | `/reports` | View computed reports and export files |
-| Print Report | `/reports/print` | Print or save report as PDF |
+| Cohort Tracking & Reports | `/cohort-tracking` | Track cohorts and export/print reports |
+| Print Report | `/reports/print` | Print or save the selected cohort report as PDF |
 | Change Password | `/change-password` | Update the current admin password |
 | Logout | `/logout` | Confirm and end the session |
 
@@ -303,12 +294,12 @@ Before demo or deployment, verify:
 - Student history shows Grade 7 to Grade 10 movement
 - Manual status/remarks edits create change-log entries
 - Cohort tracking shows expected completed, transfer, repeated, and incomplete students
-- Reports page shows at-risk students and CSR breakdown
+- Cohort Tracking & Reports shows entry cohorts, review flags, print output, and Excel export
 - Excel export downloads successfully
 - Print report opens and can be saved as PDF
 
 - The active Flask application is `app/app.py`.
-- The main templates are `dashboard.html`, `records_page.html`, `student_history.html`, `reports.html`, `login.html`, `change_password.html`, `logout_confirm.html`, and `print_report.html`.
+- The main templates are `dashboard.html`, `records_page.html`, `student_history.html`, `co_tracking.html`, `login.html`, `change_password.html`, `logout_confirm.html`, and `print_report.html`.
 - Root-level legacy files such as `app.py` or `index.html`, if present, are not used by the Docker setup.
 - Bootstrap and Bootstrap Icons are loaded from CDNs, so internet access is needed for those assets unless they are vendored locally.
 - The authentication system is suitable for internal use but should be reviewed by a security expert before public deployment.

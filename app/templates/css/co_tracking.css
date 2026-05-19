@@ -18,6 +18,14 @@
   font-size: 11px;
 }
 
+.tracking-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .form-label {
   color: #12376f;
   font-weight: 600;
@@ -92,12 +100,43 @@
   font-size: 15px;
 }
 
+.definition-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.definition-grid div {
+  background: #eef4ff;
+  border: 1px solid #d9e7fb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.definition-grid strong {
+  color: #12376f;
+  display: block;
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.definition-grid p {
+  color: #5d6f91;
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .search-box {
   max-width: 240px;
 }
 
 @media(max-width: 1100px) {
   .cohort-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .definition-grid {
     grid-template-columns: 1fr;
   }
 
@@ -120,5 +159,9 @@
 
   .search-box {
     max-width: 100%;
+  }
+
+  .tracking-actions {
+    justify-content: flex-start;
   }
 }

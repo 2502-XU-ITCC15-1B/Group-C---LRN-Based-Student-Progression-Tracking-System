@@ -271,6 +271,14 @@ body{
     display:grid;
     grid-template-columns:minmax(0, 1.75fr) minmax(310px, 0.95fr);
     gap:12px;
+    align-items:start;
+}
+
+.left-panel,
+.right-panel{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
 }
 
 .panel{
@@ -296,33 +304,8 @@ body{
     margin:0;
 }
 
-/* RATES */
-
-.rates-grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:10px;
-}
-
-.rate-box{
-    background:linear-gradient(145deg, #e8f2ff, #f8fbff);
-    border:1px solid #d7e5f7;
-    border-radius:12px;
-    padding:13px;
-    min-height:82px;
-}
-
-.rate-box span{
-    color:#5c6f8e;
+.panel-header span{
     font-size:11px;
-    font-weight:700;
-}
-
-.rate-box h3{
-    margin-top:7px;
-    color:#0067b1;
-    font-weight:800;
-    font-size:22px;
 }
 
 /* TABLE */
@@ -397,6 +380,27 @@ body{
     display:flex;
     flex-direction:column;
     gap:8px;
+}
+
+.tracking-guide{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+}
+
+.tracking-guide div{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    color:#4d6382;
+    font-size:11px;
+    line-height:1.4;
+}
+
+.tracking-guide i{
+    color:#0067b1;
+    font-size:14px;
+    margin-top:1px;
 }
 
 .custom-btn{

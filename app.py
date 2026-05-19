@@ -54,12 +54,6 @@ def home():
     cursor.close()
     conn.close()
 
-    # after retention
-    try:
-        retention = compute_retention("2024-2025", "2025-2026")
-    except:
-        retention = {"rate": 0, "retained": 0, "dropped": 0}
-
 # 👇 ADD THIS
     try:
         promotion = compute_promotion("2024-2025", "2025-2026", 9, 10)
@@ -74,7 +68,6 @@ def home():
     female=female,
     male_pct=male_pct,
     female_pct=female_pct,
-    retention=retention,
     promotion=promotion   # 👈 ADD THIS
     )
     

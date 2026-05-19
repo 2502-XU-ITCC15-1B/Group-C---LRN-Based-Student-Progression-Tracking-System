@@ -88,14 +88,16 @@
     }
 
     .summary-grid,
-    .rate-grid {
+    .rate-grid,
+    .path-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 10px;
     }
 
     .summary-grid div,
-    .rate-grid div {
+    .rate-grid div,
+    .path-grid div {
       background: #eef4ff;
       border: 1px solid #d9e2f3;
       border-radius: 6px;
@@ -104,7 +106,8 @@
     }
 
     .summary-grid span,
-    .rate-grid span {
+    .rate-grid span,
+    .path-grid span {
       color: #63708a;
       display: block;
       font-size: 11px;
@@ -112,7 +115,8 @@
     }
 
     .summary-grid strong,
-    .rate-grid strong {
+    .rate-grid strong,
+    .path-grid strong {
       color: #0067b1;
       font-size: 16px;
     }
@@ -168,7 +172,8 @@
 
       table,
       .summary-grid,
-      .rate-grid {
+      .rate-grid,
+      .path-grid {
         break-inside: avoid;
       }
     }
@@ -176,7 +181,7 @@
 </head>
 <body>
   <div class="toolbar">
-    <a href="/reports{% if selected_year %}?school_year={{ selected_year }}{% endif %}">Back to Reports</a>
+    <a href="/cohort-tracking?start_year={{ report.start_year }}&start_grade={{ report.start_grade }}">Back to Cohort Tracking</a>
     <button type="button" onclick="window.print()">Print / Save PDF</button>
   </div>
 
@@ -184,58 +189,51 @@
     <header class="report-title">
       <h1>Alubijid National Comprehensive High School</h1>
       <div class="muted">Integrated LRN-Based Student Progression Tracking System</div>
-      <h2>Progression Summary Report</h2>
-      <div class="muted">Student Records Scope: {{ report_scope }}</div>
+      <h2>Grade {{ report.start_grade }} Entry Cohort Progression Report</h2>
+      <div class="muted">{{ report.start_year }} to {{ report.end_year }}</div>
     </header>
 
     <section>
-      <h3>System-Wide Summary</h3>
+      <h3>Expected Progression Path</h3>
+      <div class="path-grid">
+        {% for step in report.expected_path %}
+        <div><span>Grade {{ step.grade }}</span><strong>{{ step.school_year }}</strong></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <h3>Cohort Summary</h3>
       <div class="summary-grid">
-        <div><span>Total Students</span><strong>{{ stats.total_students }}</strong></div>
-        <div><span>Total Records</span><strong>{{ stats.total_records }}</strong></div>
-        <div><span>Transfer-In</span><strong>{{ stats.transfer_in }}</strong></div>
-        <div><span>Transfer-Out</span><strong>{{ stats.transfer_out }}</strong></div>
+        <div><span>Original Grade {{ report.start_grade }} Entry Cohort</span><strong>{{ report.summary.total }}</strong></div>
+        <div><span>On-Time Completed</span><strong>{{ report.summary.on_time }}</strong></div>
+        <div><span>Completed Grade 10</span><strong>{{ report.summary.completed }}</strong></div>
+        <div><span>For Review</span><strong>{{ report.summary.for_review }}</strong></div>
       </div>
     </section>
 
     <section>
-      <h3>System-Wide Progression Indicators</h3>
+      <h3>Progression Indicators</h3>
       <div class="rate-grid">
-        <div><span>Cohort Survival Rate</span><strong>{{ stats.cohort_survival_rate }}%</strong></div>
-        <div><span>Completion Rate</span><strong>{{ stats.completion_rate }}%</strong></div>
-        <div><span>Retention Rate</span><strong>{{ stats.retention_rate }}%</strong></div>
-        <div><span>Repetition Rate</span><strong>{{ stats.repetition_rate }}%</strong></div>
+        <div><span>On-Time Completion Rate</span><strong>{{ report.rates.on_time_completion }}%</strong></div>
+        <div><span>Overall Completion Rate</span><strong>{{ report.rates.overall_completion }}%</strong></div>
+        <div><span>Delayed / Repeated</span><strong>{{ report.summary.delayed }}</strong></div>
+        <div><span>Transfer-Out</span><strong>{{ report.summary.transfer_out }}</strong></div>
       </div>
     </section>
 
     <section>
-      <h3>Grade Distribution</h3>
+      <h3>Progression Review Breakdown</h3>
       <table>
-        <thead><tr><th>Grade Level</th><th>Tracked Students</th><th>Status</th></tr></thead>
+        <thead><tr><th>Grade Level</th><th>Transferred Out</th><th>Delayed / Repeated</th><th>Missing / Incomplete</th><th>Total for Review</th></tr></thead>
         <tbody>
-          {% for item in grade_distribution %}
-          <tr>
-            <td>Grade {{ item.grade }}</td>
-            <td>{{ item.count }}</td>
-            <td>{{ item.label }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-
-    <section>
-      <h3>Cohort Survival Leaving-Point Breakdown</h3>
-      <table>
-        <thead><tr><th>Leaving Point</th><th>Transferred Out</th><th>Pending Transfer-In / Needs Verification</th><th>Did Not Appear After Grade</th><th>Total Left</th></tr></thead>
-        <tbody>
-          {% for item in csr_breakdown %}
+          {% for item in report.breakdown %}
           <tr>
             <td>Grade {{ item.grade }}</td>
             <td>{{ item.transferred_out }}</td>
-            <td>{{ item.pending_verification }}</td>
-            <td>{{ item.missing_after }}</td>
-            <td>{{ item.total_left }}</td>
+            <td>{{ item.repeated_or_delayed }}</td>
+            <td>{{ item.missing }}</td>
+            <td>{{ item.for_review }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -243,43 +241,51 @@
     </section>
 
     <section>
-      <h3>At-Risk Learners for Review</h3>
+      <h3>Learners for Review</h3>
       <table>
         <thead><tr><th>LRN</th><th>Student Name</th><th>Last Grade Seen</th><th>Last School Year</th><th>Reason</th><th>Remarks</th></tr></thead>
         <tbody>
-          {% for student in at_risk_students %}
+          {% for learner in report.review_learners %}
           <tr>
-            <td>{{ student.lrn }}</td>
-            <td>{{ student.name }}</td>
-            <td>Grade {{ student.last_grade }}</td>
-            <td>{{ student.last_year }}</td>
-            <td>{{ student.reason }}</td>
-            <td>{{ student.remarks }}</td>
+            <td>{{ learner.lrn }}</td>
+            <td>{{ learner.name }}</td>
+            <td>Grade {{ learner.last_grade }}</td>
+            <td>{{ learner.last_year }}</td>
+            <td>{{ learner.reason }}</td>
+            <td>{{ learner.remarks }}</td>
           </tr>
           {% else %}
-          <tr><td class="empty" colspan="6">No at-risk students found.</td></tr>
+          <tr><td class="empty" colspan="6">No learners need review for this cohort.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </section>
 
     <section>
-      <h3>Student Records</h3>
+      <h3>Student Cohort List</h3>
       <table>
-        <thead><tr><th>LRN</th><th>Student Name</th><th>Sex</th><th>Grade</th><th>School Year</th><th>Status</th><th>Remarks</th></tr></thead>
-        <tbody>
-          {% for record in records %}
+        <thead>
           <tr>
-            <td>{{ record.lrn }}</td>
-            <td>{{ record.name }}</td>
-            <td>{{ record.gender }}</td>
-            <td>Grade {{ record.grade_level }}</td>
-            <td>{{ record.school_year }}</td>
-            <td>{{ record.status_label }}</td>
-            <td>{{ record.remarks }}</td>
+            <th>LRN</th>
+            <th>Student Name</th>
+            {% for step in report.expected_path %}
+            <th>Grade {{ step.grade }}<br>{{ step.school_year }}</th>
+            {% endfor %}
+            <th>Final Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.rows %}
+          <tr>
+            <td>{{ row.lrn }}</td>
+            <td>{{ row.name }}</td>
+            {% for cell in row.path %}
+            <td>{{ cell.status_label }}{% if cell.remarks %}<br><span class="muted">{{ cell.remarks }}</span>{% endif %}</td>
+            {% endfor %}
+            <td>{{ row.result_label }}</td>
           </tr>
           {% else %}
-          <tr><td class="empty" colspan="7">No records found for this report scope.</td></tr>
+          <tr><td class="empty" colspan="{{ report.expected_path|length + 3 }}">No Grade {{ report.start_grade }} learners found for this starting school year.</td></tr>
           {% endfor %}
         </tbody>
       </table>

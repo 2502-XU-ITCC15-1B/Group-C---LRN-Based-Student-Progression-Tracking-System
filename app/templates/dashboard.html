@@ -18,8 +18,8 @@
     </div>
     <div class="nav-group"><p>MAIN</p><a href="/dashboard" class="active"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></div>
     <div class="nav-group"><p>DATA INTEGRATION</p><a href="/lis-upload"><i class="bi bi-upload"></i>LIS Upload</a></div>
-    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a><a href="/cohort-tracking"><i class="bi bi-diagram-3-fill"></i>Cohort Tracking</a></div>
-    <div class="nav-group"><p>OUTPUTS</p><a href="/reports"><i class="bi bi-file-earmark-text-fill"></i>Reports</a></div>
+    <div class="nav-group"><p>STUDENT MANAGEMENT</p><a href="/students"><i class="bi bi-people-fill"></i>Students</a></div>
+    <div class="nav-group"><p>OUTPUTS</p><a href="/cohort-tracking"><i class="bi bi-file-earmark-text-fill"></i>Cohort Tracking & Reports</a></div>
     <div class="nav-group"><p>ACCOUNT</p><a href="/change-password"><i class="bi bi-key-fill"></i>Change Password</a><a href="/logout"><i class="bi bi-box-arrow-right"></i>Logout</a></div>
   </aside>
 
@@ -42,17 +42,10 @@
     <section class="dashboard-grid">
       <div class="left-panel">
         <div class="panel">
-          <div class="panel-header"><h5>Progression Rates</h5></div>
-          <div class="rates-grid">
-            <div class="rate-box"><span>Cohort Survival</span><h3>{{ stats.cohort_survival_rate }}%</h3></div>
-            <div class="rate-box"><span>Completion Rate</span><h3>{{ stats.completion_rate }}%</h3></div>
-            <div class="rate-box"><span>Retention Rate</span><h3>{{ stats.retention_rate }}%</h3></div>
-            <div class="rate-box"><span>Repetition Rate</span><h3>{{ stats.repetition_rate }}%</h3></div>
+          <div class="panel-header">
+            <h5>Uploaded Records by Grade Level</h5>
+            <span class="text-muted">Data coverage only, not cohort progression.</span>
           </div>
-        </div>
-
-        <div class="panel mt-4">
-          <div class="panel-header"><h5>Student Distribution</h5></div>
           <table class="table custom-table">
             <thead><tr><th>Grade Level</th><th>Students</th><th>Status</th></tr></thead>
             <tbody>
@@ -66,9 +59,7 @@
             </tbody>
           </table>
         </div>
-      </div>
 
-      <div class="right-panel">
         <div class="panel">
           <div class="panel-header"><h5>Latest Activities</h5></div>
           {% if recent_changes %}
@@ -88,13 +79,24 @@
             </div>
           {% endif %}
         </div>
+      </div>
 
-        <div class="panel mt-4">
+      <div class="right-panel">
+        <div class="panel">
           <div class="panel-header"><h5>Quick Actions</h5></div>
           <div class="quick-actions">
             <a href="/lis-upload" class="btn custom-btn"><i class="bi bi-cloud-arrow-up-fill"></i>Upload LIS Data</a>
             <a href="/cohort-tracking" class="btn custom-btn"><i class="bi bi-diagram-3-fill"></i>Track Cohort</a>
             <a href="/students" class="btn custom-btn"><i class="bi bi-people-fill"></i>View Students</a>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h5>Tracking Guide</h5></div>
+          <div class="tracking-guide">
+            <div><i class="bi bi-check2-circle"></i><span>Use Grade 7 for a full Junior High cohort report.</span></div>
+            <div><i class="bi bi-arrow-left-right"></i><span>Use Grade 8 to 10 for transferees or later-entry learners.</span></div>
+            <div><i class="bi bi-exclamation-circle"></i><span>Missing, transfer, repeated, or delayed records are marked for review.</span></div>
           </div>
         </div>
       </div>

@@ -87,6 +87,7 @@ def status_badge_class(status):
         "MISSING": "bg-secondary",
         "REPEATED": "bg-warning text-dark",
         "COMPLETED": "bg-primary",
+        "DELAYED_COMPLETED": "bg-info text-dark",
         "STRAIGHT_PATH": "bg-success",
         "INCOMPLETE": "bg-secondary",
     }
@@ -726,33 +727,11 @@ def add_student_year_record(lrn):
 @app.route("/reports")
 @login_required
 def reports():
-    ensure_schema()
-
-    selected_year = request.args.get("school_year", "").strip()
-    if selected_year and not is_valid_school_year(selected_year):
-        flash("Use school year format YYYY-YYYY with consecutive years for reports.")
-        selected_year = ""
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    stats = get_dashboard_stats(cursor)
-    grade_distribution = get_grade_distribution(cursor)
-    school_years = get_school_years(cursor)
-    at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(at_risk_students)
-
-    cursor.close()
-    conn.close()
-
-    return render_template(
-        "reports.html",
-        stats=stats,
-        grade_distribution=grade_distribution,
-        school_years=school_years,
-        selected_year=selected_year,
-        at_risk_students=at_risk_students,
-        csr_breakdown=csr_breakdown,
-    )
+    start_year = request.args.get("start_year", "").strip()
+    start_grade = request.args.get("start_grade", "7").strip()
+    if start_year:
+        return redirect(url_for("cohort_tracking", start_year=start_year, start_grade=start_grade))
+    return redirect(url_for("cohort_tracking"))
 
 
 @app.route("/reports/export")
@@ -760,35 +739,32 @@ def reports():
 def export_report():
     ensure_schema()
 
-    school_year = request.args.get("school_year", "").strip()
-    if school_year and not is_valid_school_year(school_year):
-        flash("Use school year format YYYY-YYYY with consecutive years before exporting.")
-        return redirect(url_for("reports"))
+    start_year = request.args.get("start_year", "").strip()
+    start_grade = request.args.get("start_grade", "7").strip()
+    if not start_year:
+        flash("Select a cohort starting school year before exporting.")
+        return redirect(url_for("cohort_tracking"))
+    if not is_valid_school_year(start_year):
+        flash("Use a valid starting school year in YYYY-YYYY format before exporting.")
+        return redirect(url_for("cohort_tracking"))
+    if not start_grade.isdigit() or int(start_grade) not in SUPPORTED_GRADES:
+        flash("Select a valid Grade 7 to Grade 10 entry level before exporting.")
+        return redirect(url_for("cohort_tracking", start_year=start_year))
+
+    start_grade = int(start_grade)
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    stats = get_dashboard_stats(cursor)
-    grade_distribution = get_grade_distribution(cursor)
-    records = get_report_records(cursor, school_year)
-    at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(at_risk_students)
+    report = build_grade7_cohort_report(cursor, start_year, start_grade)
     cursor.close()
     conn.close()
 
-    workbook = build_progression_report_workbook(
-        stats,
-        grade_distribution,
-        records,
-        school_year,
-        at_risk_students,
-        csr_breakdown,
-    )
+    workbook = build_grade7_cohort_report_workbook(report)
     output = BytesIO()
     workbook.save(output)
     output.seek(0)
 
-    year_label = school_year or "all-years"
-    filename = f"lrn-progression-report-{year_label}.xlsx"
+    filename = f"grade-{start_grade}-entry-cohort-progression-report-{start_year}.xlsx"
 
     return send_file(
         output,
@@ -803,30 +779,29 @@ def export_report():
 def print_report():
     ensure_schema()
 
-    school_year = request.args.get("school_year", "").strip()
-    if school_year and not is_valid_school_year(school_year):
-        flash("Use school year format YYYY-YYYY with consecutive years before printing.")
-        return redirect(url_for("reports"))
+    start_year = request.args.get("start_year", "").strip()
+    start_grade = request.args.get("start_grade", "7").strip()
+    if not start_year:
+        flash("Select a cohort starting school year before printing.")
+        return redirect(url_for("cohort_tracking"))
+    if not is_valid_school_year(start_year):
+        flash("Use a valid starting school year in YYYY-YYYY format before printing.")
+        return redirect(url_for("cohort_tracking"))
+    if not start_grade.isdigit() or int(start_grade) not in SUPPORTED_GRADES:
+        flash("Select a valid Grade 7 to Grade 10 entry level before printing.")
+        return redirect(url_for("cohort_tracking", start_year=start_year))
+
+    start_grade = int(start_grade)
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    stats = get_dashboard_stats(cursor)
-    grade_distribution = get_grade_distribution(cursor)
-    records = get_report_records(cursor, school_year)
-    at_risk_students = get_at_risk_students(cursor)
-    csr_breakdown = get_csr_breakdown(at_risk_students)
+    report = build_grade7_cohort_report(cursor, start_year, start_grade)
     cursor.close()
     conn.close()
 
     return render_template(
         "print_report.html",
-        stats=stats,
-        grade_distribution=grade_distribution,
-        records=records,
-        selected_year=school_year,
-        report_scope=school_year or "All Uploaded School Years",
-        at_risk_students=at_risk_students,
-        csr_breakdown=csr_breakdown,
+        report=report,
     )
 
 
@@ -1067,11 +1042,13 @@ def cohort_tracking():
         "total": 0,
         "straight_path": 0,
         "completed": 0,
+        "delayed": 0,
         "repeated": 0,
         "transfer_in": 0,
         "transfer_out": 0,
         "dropped": 0,
         "incomplete": 0,
+        "for_review": 0,
     }
     expected_path = []
 
@@ -1149,16 +1126,8 @@ def get_dashboard_stats(cursor):
     )
     repeaters = cursor.fetchone()[0] or 0
 
-    cursor.execute("SELECT COUNT(DISTINCT lrn) FROM student_records WHERE grade_level = 7")
-    grade_7 = cursor.fetchone()[0] or 0
-
     cursor.execute("SELECT COUNT(DISTINCT lrn) FROM student_records WHERE grade_level = 10")
     grade_10 = cursor.fetchone()[0] or 0
-
-    cohort_survival_rate = round((grade_10 / grade_7) * 100, 2) if grade_7 else 0
-    completion_rate = round((grade_10 / total_students) * 100, 2) if total_students else 0
-    retention_rate = round(((total_records - (transfer_out or 0)) / total_records) * 100, 2) if total_records else 0
-    repetition_rate = round((repeaters / total_records) * 100, 2) if total_records else 0
 
     return {
         "total_students": total_students,
@@ -1169,10 +1138,6 @@ def get_dashboard_stats(cursor):
         "transfer_out": transfer_out or 0,
         "repeaters": repeaters,
         "completed": grade_10,
-        "cohort_survival_rate": cohort_survival_rate,
-        "completion_rate": completion_rate,
-        "retention_rate": retention_rate,
-        "repetition_rate": repetition_rate,
     }
 
 
@@ -1333,7 +1298,8 @@ def humanize_status(status):
         "MISSING": "Missing",
         "REPEATED": "Repeated",
         "COMPLETED": "Completed",
-        "STRAIGHT_PATH": "Straight Path",
+        "DELAYED_COMPLETED": "Completed - Delayed",
+        "STRAIGHT_PATH": "Regular",
         "INCOMPLETE": "Incomplete",
     }
     return labels.get(status, str(status or "").replace("_", " ").title())
@@ -1390,144 +1356,6 @@ def build_student_timelines(cursor):
         )
 
     return timelines
-
-
-def build_year_grade_calculator(cursor, base_year, compare_year, grade_from, grade_to):
-    expected_grade_to = grade_from + 1
-
-    if grade_from >= 10:
-        return {
-            "base_year": base_year,
-            "compare_year": compare_year,
-            "grade_from": grade_from,
-            "grade_to": grade_to,
-            "has_data": False,
-            "message": "Promotion calculator only supports Grade 7 to Grade 10 progression paths.",
-            "retention": {"retained": 0, "dropped": 0, "rate": 0},
-            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
-        }
-
-    if grade_to != expected_grade_to:
-        return {
-            "base_year": base_year,
-            "compare_year": compare_year,
-            "grade_from": grade_from,
-            "grade_to": grade_to,
-            "has_data": False,
-            "message": f"Invalid progression path. Grade {grade_from} should be compared to Grade {expected_grade_to}.",
-            "retention": {"retained": 0, "dropped": 0, "rate": 0},
-            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
-        }
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT lrn)
-        FROM student_records
-        WHERE school_year = %s
-        AND grade_level = %s
-        """,
-        (base_year, grade_from),
-    )
-    base_total = cursor.fetchone()[0] or 0
-
-    if base_total == 0:
-        return {
-            "base_year": base_year,
-            "compare_year": compare_year,
-            "grade_from": grade_from,
-            "grade_to": grade_to,
-            "has_data": False,
-            "message": f"No Grade {grade_from} records found for {base_year}.",
-            "retention": {"retained": 0, "dropped": 0, "rate": 0},
-            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
-        }
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT lrn)
-        FROM student_records
-        WHERE school_year = %s
-        AND grade_level = %s
-        """,
-        (compare_year, grade_to),
-    )
-    compare_total = cursor.fetchone()[0] or 0
-
-    if compare_total == 0:
-        return {
-            "base_year": base_year,
-            "compare_year": compare_year,
-            "grade_from": grade_from,
-            "grade_to": grade_to,
-            "has_data": False,
-            "message": f"No Grade {grade_to} records found for {compare_year}.",
-            "retention": {"retained": 0, "dropped": 0, "rate": 0},
-            "promotion": {"promoted": 0, "repeated": 0, "dropped": 0, "rate": 0},
-        }
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT r1.lrn)
-        FROM student_records r1
-        JOIN student_records r2 ON r1.lrn = r2.lrn
-        WHERE r1.school_year = %s
-        AND r1.grade_level = %s
-        AND r2.school_year = %s
-        """,
-        (base_year, grade_from, compare_year),
-    )
-    retained = cursor.fetchone()[0] or 0
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT r1.lrn)
-        FROM student_records r1
-        JOIN student_records r2 ON r1.lrn = r2.lrn
-        WHERE r1.school_year = %s
-        AND r1.grade_level = %s
-        AND r2.school_year = %s
-        AND r2.grade_level = %s
-        """,
-        (base_year, grade_from, compare_year, grade_to),
-    )
-    promoted = cursor.fetchone()[0] or 0
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT r1.lrn)
-        FROM student_records r1
-        JOIN student_records r2 ON r1.lrn = r2.lrn
-        WHERE r1.school_year = %s
-        AND r1.grade_level = %s
-        AND r2.school_year = %s
-        AND r2.grade_level = %s
-        """,
-        (base_year, grade_from, compare_year, grade_from),
-    )
-    repeated = cursor.fetchone()[0] or 0
-
-    retention_dropped = base_total - retained
-    promotion_dropped = base_total - (promoted + repeated)
-
-    return {
-        "base_year": base_year,
-        "compare_year": compare_year,
-        "grade_from": grade_from,
-        "grade_to": grade_to,
-        "has_data": True,
-        "message": "",
-        "retention": {
-            "retained": retained,
-            "dropped": retention_dropped,
-            "rate": round((retained / base_total) * 100, 2),
-        },
-        "promotion": {
-            "promoted": promoted,
-            "repeated": repeated,
-            "dropped": promotion_dropped,
-            "rate": round((promoted / base_total) * 100, 2),
-        },
-    }
 
 
 def get_at_risk_students(cursor):
@@ -1632,146 +1460,96 @@ def style_report_sheet(sheet):
     sheet.freeze_panes = "A13"
 
 
-def build_progression_report_workbook(
-    stats,
-    grade_distribution,
-    records,
-    school_year="",
-    at_risk_students=None,
-    csr_breakdown=None,
-):
-    at_risk_students = at_risk_students or []
-    csr_breakdown = csr_breakdown or []
+def build_grade7_cohort_report_workbook(report):
     workbook = Workbook()
     sheet = workbook.active
-    sheet.title = "Progression Report"
+    sheet.title = "Cohort Report"
 
-    report_scope = school_year if school_year else "All Uploaded School Years"
-    sheet.merge_cells("A1:H1")
-    sheet["A1"] = "Integrated LRN-Based Student Progression Tracking System"
-    sheet["A2"] = "Report Type"
-    sheet["B2"] = "Progression Summary"
-    sheet["A3"] = "Student Records Scope"
-    sheet["B3"] = report_scope
+    sheet.merge_cells("A1:G1")
+    sheet["A1"] = report["title"]
+    sheet["A2"] = "Entry Cohort Start"
+    sheet["B2"] = report["start_year"]
+    sheet["A3"] = "Expected Grade 10 Year"
+    sheet["B3"] = report["end_year"]
 
     summary_rows = [
-        ("System-Wide Metric", "Value", "", "System-Wide Rate", "Value", "", "Grade", "Tracked Students"),
-        ("Total Students", stats["total_students"], "", "Cohort Survival Rate", f"{stats['cohort_survival_rate']}%", "", "Grade 7", grade_distribution[0]["count"]),
-        ("Total Records", stats["total_records"], "", "Completion Rate", f"{stats['completion_rate']}%", "", "Grade 8", grade_distribution[1]["count"]),
-        ("Transfer-In", stats["transfer_in"], "", "Retention Rate", f"{stats['retention_rate']}%", "", "Grade 9", grade_distribution[2]["count"]),
-        ("Transfer-Out", stats["transfer_out"], "", "Repetition Rate", f"{stats['repetition_rate']}%", "", "Grade 10", grade_distribution[3]["count"]),
-        ("Repeaters", stats["repeaters"], "", "", "", "", "", ""),
+        ("Summary", "Value", "", "Indicator", "Value", "", "Meaning"),
+        (f"Original Grade {report['start_grade']} Entry Cohort", report["summary"]["total"], "", "On-Time Completion Rate", f"{report['rates']['on_time_completion']}%", "", "Completed Grade 10 on the expected year"),
+        ("On-Time Completed", report["summary"]["on_time"], "", "Overall Completion Rate", f"{report['rates']['overall_completion']}%", "", "Completed Grade 10 even if delayed"),
+        ("Completed Grade 10", report["summary"]["completed"], "", "Delayed / Repeated", report["summary"]["delayed"], "", "Learners with repetition or late completion"),
+        ("Transfer-Out", report["summary"]["transfer_out"], "", "For Review", report["summary"]["for_review"], "", "Records needing verification"),
+        ("Incomplete", report["summary"]["incomplete"], "", "", "", "", ""),
     ]
-
-    start_row = 5
-    for offset, row in enumerate(summary_rows):
+    for offset, row in enumerate(summary_rows, start=5):
         for column, value in enumerate(row, start=1):
-            sheet.cell(row=start_row + offset, column=column, value=value)
+            sheet.cell(row=offset, column=column, value=value)
 
-    table_start = 12
-    headers = ["LRN", "Student Name", "Sex", "Grade", "School Year", "Status", "Remarks", "Tracking Note"]
+    path_row = 12
+    path_headers = ["Expected Path"] + [f"Grade {step['grade']}" for step in report["expected_path"]]
+    for column, value in enumerate(path_headers, start=1):
+        sheet.cell(row=path_row, column=column, value=value)
+    sheet.cell(row=path_row + 1, column=1, value="School Year")
+    for column, step in enumerate(report["expected_path"], start=2):
+        sheet.cell(row=path_row + 1, column=column, value=step["school_year"])
+
+    table_start = 16
+    path_columns = [f"Grade {step['grade']} ({step['school_year']})" for step in report["expected_path"]]
+    headers = ["LRN", "Student Name"] + path_columns + ["Final Result", "Review Note"]
     for column, header in enumerate(headers, start=1):
         sheet.cell(row=table_start, column=column, value=header)
 
-    for offset, record in enumerate(records, start=1):
-        note = "Transfer record" if "TRANSFER" in record["status"] else "Active/standard record"
-        row = table_start + offset
-        sheet.cell(row=row, column=1, value=record["lrn"])
-        sheet.cell(row=row, column=2, value=record["name"])
-        sheet.cell(row=row, column=3, value=record["gender"])
-        sheet.cell(row=row, column=4, value=f"Grade {record['grade_level']}")
-        sheet.cell(row=row, column=5, value=record["school_year"])
-        sheet.cell(row=row, column=6, value=record["status_label"])
-        sheet.cell(row=row, column=7, value=record["remarks"])
-        sheet.cell(row=row, column=8, value=note)
+    for row_index, row_data in enumerate(report["rows"], start=table_start + 1):
+        sheet.cell(row=row_index, column=1, value=row_data["lrn"])
+        sheet.cell(row=row_index, column=2, value=row_data["name"])
+        for column, cell in enumerate(row_data["path"], start=3):
+            value = cell["status_label"]
+            if cell["remarks"]:
+                value = f"{value} - {cell['remarks']}"
+            sheet.cell(row=row_index, column=column, value=value)
+        sheet.cell(row=row_index, column=3 + len(report["expected_path"]), value=row_data["result_label"])
+        sheet.cell(row=row_index, column=4 + len(report["expected_path"]), value=row_data["reason"] or "")
 
-    if not records:
-        sheet.cell(row=table_start + 1, column=1, value="No records found for this report scope.")
+    if not report["rows"]:
+        sheet.cell(row=table_start + 1, column=1, value=f"No Grade {report['start_grade']} learners found for this starting school year.")
 
     style_report_sheet(sheet)
 
-    risk_sheet = workbook.create_sheet("At-Risk Review")
-    risk_sheet.merge_cells("A1:F1")
-    risk_sheet["A1"] = "At-Risk Learners for Review"
-    risk_headers = ["LRN", "Student Name", "Last Grade Seen", "Last School Year", "Reason", "Remarks"]
-    for column, header in enumerate(risk_headers, start=1):
-        risk_sheet.cell(row=5, column=column, value=header)
+    review_sheet = workbook.create_sheet("For Review")
+    review_sheet.merge_cells("A1:F1")
+    review_sheet["A1"] = "Learners for Review"
+    review_headers = ["LRN", "Student Name", "Last Grade Seen", "Last School Year", "Reason", "Remarks"]
+    for column, header in enumerate(review_headers, start=1):
+        review_sheet.cell(row=5, column=column, value=header)
 
-    for row_index, student in enumerate(at_risk_students, start=6):
-        risk_sheet.cell(row=row_index, column=1, value=student["lrn"])
-        risk_sheet.cell(row=row_index, column=2, value=student["name"])
-        risk_sheet.cell(row=row_index, column=3, value=f"Grade {student['last_grade']}")
-        risk_sheet.cell(row=row_index, column=4, value=student["last_year"])
-        risk_sheet.cell(row=row_index, column=5, value=student["reason"])
-        risk_sheet.cell(row=row_index, column=6, value=student["remarks"])
+    for row_index, learner in enumerate(report["review_learners"], start=6):
+        review_sheet.cell(row=row_index, column=1, value=learner["lrn"])
+        review_sheet.cell(row=row_index, column=2, value=learner["name"])
+        review_sheet.cell(row=row_index, column=3, value=f"Grade {learner['last_grade']}")
+        review_sheet.cell(row=row_index, column=4, value=learner["last_year"])
+        review_sheet.cell(row=row_index, column=5, value=learner["reason"])
+        review_sheet.cell(row=row_index, column=6, value=learner["remarks"])
 
-    if not at_risk_students:
-        risk_sheet.cell(row=6, column=1, value="No at-risk students found.")
+    if not report["review_learners"]:
+        review_sheet.cell(row=6, column=1, value="No learners need review for this cohort.")
 
-    style_report_sheet(risk_sheet)
+    style_report_sheet(review_sheet)
 
-    csr_sheet = workbook.create_sheet("CSR Breakdown")
-    csr_sheet.merge_cells("A1:E1")
-    csr_sheet["A1"] = "Cohort Survival Leaving-Point Breakdown"
-    csr_headers = [
-        "Leaving Point",
-        "Transferred Out",
-        "Pending Transfer-In / Needs Verification",
-        "Did Not Appear After Grade",
-        "Total Left",
-    ]
-    for column, header in enumerate(csr_headers, start=1):
-        csr_sheet.cell(row=5, column=column, value=header)
+    breakdown_sheet = workbook.create_sheet("Review Breakdown")
+    breakdown_sheet.merge_cells("A1:E1")
+    breakdown_sheet["A1"] = "Progression Review Breakdown"
+    breakdown_headers = ["Grade Level", "Transferred Out", "Delayed / Repeated", "Missing / Incomplete", "Total for Review"]
+    for column, header in enumerate(breakdown_headers, start=1):
+        breakdown_sheet.cell(row=5, column=column, value=header)
 
-    for row_index, item in enumerate(csr_breakdown, start=6):
-        csr_sheet.cell(row=row_index, column=1, value=f"Grade {item['grade']}")
-        csr_sheet.cell(row=row_index, column=2, value=item["transferred_out"])
-        csr_sheet.cell(row=row_index, column=3, value=item["pending_verification"])
-        csr_sheet.cell(row=row_index, column=4, value=item["missing_after"])
-        csr_sheet.cell(row=row_index, column=5, value=item["total_left"])
+    for row_index, item in enumerate(report["breakdown"], start=6):
+        breakdown_sheet.cell(row=row_index, column=1, value=f"Grade {item['grade']}")
+        breakdown_sheet.cell(row=row_index, column=2, value=item["transferred_out"])
+        breakdown_sheet.cell(row=row_index, column=3, value=item["repeated_or_delayed"])
+        breakdown_sheet.cell(row=row_index, column=4, value=item["missing"])
+        breakdown_sheet.cell(row=row_index, column=5, value=item["for_review"])
 
-    style_report_sheet(csr_sheet)
+    style_report_sheet(breakdown_sheet)
     return workbook
-
-
-def compute_retention(year1, year2):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM student_records r1
-        JOIN student_records r2
-        ON r1.lrn = r2.lrn
-        WHERE r1.school_year = %s
-        AND r2.school_year = %s
-        """,
-        (year1, year2),
-    )
-    retained = cursor.fetchone()[0]
-
-    cursor.execute(
-        """
-        SELECT COUNT(DISTINCT lrn)
-        FROM student_records
-        WHERE school_year = %s
-        """,
-        (year1,),
-    )
-    total = cursor.fetchone()[0]
-
-    dropped = total - retained
-    rate = (retained / total * 100) if total > 0 else 0
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "retained": retained,
-        "dropped": dropped,
-        "rate": round(rate, 2),
-    }
 
 
 def compute_promotion(year1, year2, grade_from, grade_to):
@@ -1849,24 +1627,31 @@ def build_expected_path(start_year, start_grade):
     return path
 
 
-def summarize_cohort_status(path_cells):
+def summarize_cohort_status(path_cells, records=None):
+    records = records or []
     statuses = [cell["status"] for cell in path_cells if cell["status"] != "MISSING"]
+    all_statuses = statuses + [record[2] for record in records]
     grades = [cell["actual_grade"] for cell in path_cells if cell["actual_grade"] is not None]
+    all_grades = [record[1] for record in records]
+    has_missing = any(cell["status"] == "MISSING" for cell in path_cells)
+    has_grade_10 = 10 in all_grades or (
+        path_cells and path_cells[-1]["status"] != "MISSING" and path_cells[-1]["expected_grade"] == 10
+    )
 
-    if "TRANSFER_OUT" in statuses:
+    if "TRANSFER_OUT" in all_statuses:
         return "TRANSFER_OUT"
 
-    if "TRANSFER_IN" in statuses or "PENDING_TRANSFER_IN" in statuses:
+    if has_grade_10:
+        return "DELAYED_COMPLETED" if has_missing else "COMPLETED"
+
+    if "TRANSFER_IN" in all_statuses or "PENDING_TRANSFER_IN" in all_statuses:
         return "TRANSFER_IN"
 
-    if len(grades) != len(set(grades)):
+    if len(grades) != len(set(grades)) or len(all_grades) != len(set(all_grades)):
         return "REPEATED"
 
-    if any(cell["status"] == "MISSING" for cell in path_cells):
+    if has_missing:
         return "INCOMPLETE"
-
-    if path_cells and path_cells[-1]["status"] != "MISSING" and path_cells[-1]["expected_grade"] == 10:
-        return "COMPLETED"
 
     return "STRAIGHT_PATH"
 
@@ -1890,11 +1675,13 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
         "total": len(cohort_students),
         "straight_path": 0,
         "completed": 0,
+        "delayed": 0,
         "repeated": 0,
         "transfer_in": 0,
         "transfer_out": 0,
         "dropped": 0,
         "incomplete": 0,
+        "for_review": 0,
     }
 
     for lrn, name in cohort_students:
@@ -1903,9 +1690,10 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
             SELECT school_year, grade_level, status, remarks
             FROM student_records
             WHERE lrn = %s
+            AND grade_level BETWEEN %s AND 10
             ORDER BY school_year, grade_level
             """,
-            (lrn,),
+            (lrn, start_grade),
         )
         records = cursor.fetchall()
         records_by_year_grade = {
@@ -1945,11 +1733,14 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
                     }
                 )
 
-        result = summarize_cohort_status(path_cells)
+        result = summarize_cohort_status(path_cells, records)
 
         if result == "COMPLETED":
             summary["completed"] += 1
             summary["straight_path"] += 1
+        elif result == "DELAYED_COMPLETED":
+            summary["completed"] += 1
+            summary["delayed"] += 1
         elif result == "STRAIGHT_PATH":
             summary["straight_path"] += 1
         elif result == "REPEATED":
@@ -1964,6 +1755,9 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
         if result == "INCOMPLETE" and any(cell["status"] == "MISSING" for cell in path_cells):
             summary["dropped"] += 1
 
+        if result not in {"COMPLETED", "STRAIGHT_PATH"}:
+            summary["for_review"] += 1
+
         rows.append(
             {
                 "lrn": lrn,
@@ -1975,6 +1769,199 @@ def build_cohort_tracking(cursor, start_year, start_grade, expected_path):
         )
 
     return rows, summary
+
+
+def build_grade7_cohort_report(cursor, start_year, start_grade=7):
+    expected_path = build_expected_path(start_year, start_grade)
+    end_year = expected_path[-1]["school_year"]
+
+    cursor.execute(
+        """
+        SELECT DISTINCT s.lrn, s.name
+        FROM students s
+        JOIN student_records r ON s.lrn = r.lrn
+        WHERE r.school_year = %s
+        AND r.grade_level = %s
+        ORDER BY s.name
+        """,
+        (start_year, start_grade),
+    )
+    cohort_students = cursor.fetchall()
+
+    summary = {
+        "total": len(cohort_students),
+        "on_time": 0,
+        "completed": 0,
+        "delayed": 0,
+        "repeated": 0,
+        "transfer_out": 0,
+        "incomplete": 0,
+        "for_review": 0,
+    }
+    breakdown = {
+        grade: {
+            "grade": grade,
+            "missing": 0,
+            "repeated_or_delayed": 0,
+            "transferred_out": 0,
+            "for_review": 0,
+        }
+        for grade in SUPPORTED_GRADES
+    }
+    review_learners = []
+    rows = []
+
+    for lrn, name in cohort_students:
+        cursor.execute(
+            """
+            SELECT school_year, grade_level, status, remarks
+            FROM student_records
+            WHERE lrn = %s
+            AND grade_level BETWEEN %s AND 10
+            ORDER BY school_year, grade_level
+            """,
+            (lrn, start_grade),
+        )
+        records = [
+            {
+                "school_year": school_year,
+                "grade_level": grade_level,
+                "status": status,
+                "remarks": remarks,
+            }
+            for school_year, grade_level, status, remarks in cursor.fetchall()
+        ]
+        records_by_year_grade = {
+            (record["school_year"], record["grade_level"]): record
+            for record in records
+        }
+        grade_years = {}
+        for record in records:
+            grade_years.setdefault(record["grade_level"], set()).add(record["school_year"])
+
+        path_cells = []
+        missing_steps = []
+        for step in expected_path:
+            record = records_by_year_grade.get((step["school_year"], step["grade"]))
+            if record:
+                path_cells.append(
+                    {
+                        "school_year": step["school_year"],
+                        "expected_grade": step["grade"],
+                        "status": record["status"],
+                        "status_label": humanize_status(record["status"]),
+                        "remarks": format_remarks(record["status"], record["remarks"]),
+                    }
+                )
+            else:
+                missing_steps.append(step)
+                path_cells.append(
+                    {
+                        "school_year": step["school_year"],
+                        "expected_grade": step["grade"],
+                        "status": "MISSING",
+                        "status_label": humanize_status("MISSING"),
+                        "remarks": "",
+                    }
+                )
+
+        has_grade10 = any(record["grade_level"] == 10 for record in records)
+        has_expected_grade10 = (end_year, 10) in records_by_year_grade
+        has_transfer_out = any(record["status"] == "TRANSFER_OUT" for record in records)
+        has_pending_transfer = any(record["status"] == "PENDING_TRANSFER_IN" for record in records)
+        has_repetition = any(len(years) > 1 for years in grade_years.values())
+        on_time = has_expected_grade10 and not missing_steps and not has_transfer_out
+        delayed = has_grade10 and not on_time
+
+        if has_transfer_out:
+            result = "TRANSFER_OUT"
+            reason = "Transferred out before completing the expected path"
+        elif on_time:
+            result = "COMPLETED"
+            reason = ""
+        elif delayed:
+            result = "DELAYED_COMPLETED"
+            reason = "Reached Grade 10 later than the expected path"
+        elif has_repetition:
+            result = "REPEATED"
+            reason = "Repeated or delayed in one grade level"
+        else:
+            result = "INCOMPLETE"
+            reason = "Missing expected progression record"
+
+        if has_pending_transfer and result not in {"COMPLETED", "DELAYED_COMPLETED"}:
+            reason = "Pending transfer-in record needs verification"
+
+        if on_time:
+            summary["on_time"] += 1
+        if has_grade10:
+            summary["completed"] += 1
+        if delayed or has_repetition:
+            summary["delayed"] += 1
+        if has_repetition:
+            summary["repeated"] += 1
+        if has_transfer_out:
+            summary["transfer_out"] += 1
+        if result == "INCOMPLETE":
+            summary["incomplete"] += 1
+        if result in {"TRANSFER_OUT", "REPEATED", "INCOMPLETE", "DELAYED_COMPLETED"} or has_pending_transfer:
+            summary["for_review"] += 1
+
+        if has_transfer_out:
+            transfer_record = next((record for record in records if record["status"] == "TRANSFER_OUT"), records[-1])
+            grade = transfer_record["grade_level"]
+            breakdown[grade]["transferred_out"] += 1
+            breakdown[grade]["for_review"] += 1
+        if has_repetition or delayed:
+            latest_grade = max(record["grade_level"] for record in records)
+            breakdown[latest_grade]["repeated_or_delayed"] += 1
+            breakdown[latest_grade]["for_review"] += 1
+        if missing_steps and not has_grade10 and not has_transfer_out:
+            grade = missing_steps[0]["grade"]
+            breakdown[grade]["missing"] += 1
+            breakdown[grade]["for_review"] += 1
+
+        if reason:
+            latest = records[-1] if records else {"grade_level": start_grade, "school_year": start_year, "remarks": ""}
+            review_learners.append(
+                {
+                    "lrn": lrn,
+                    "name": name,
+                    "last_grade": latest["grade_level"],
+                    "last_year": latest["school_year"],
+                    "reason": reason,
+                    "remarks": format_remarks(latest.get("status"), latest.get("remarks")) or "-",
+                }
+            )
+
+        rows.append(
+            {
+                "lrn": lrn,
+                "name": name,
+                "path": path_cells,
+                "result": result,
+                "result_label": humanize_status(result),
+                "reason": reason,
+            }
+        )
+
+    rates = {
+        "on_time_completion": round((summary["on_time"] / summary["total"]) * 100, 2) if summary["total"] else 0,
+        "overall_completion": round((summary["completed"] / summary["total"]) * 100, 2) if summary["total"] else 0,
+    }
+
+    return {
+        "start_year": start_year,
+        "end_year": end_year,
+        "start_grade": start_grade,
+        "title": f"Grade {start_grade} Entry Cohort Progression Report: {start_year} to {end_year}",
+        "expected_path": expected_path,
+        "summary": summary,
+        "rates": rates,
+        "breakdown": list(breakdown.values()),
+        "review_learners": review_learners,
+        "rows": rows,
+    }
 
 
 def ensure_schema():
